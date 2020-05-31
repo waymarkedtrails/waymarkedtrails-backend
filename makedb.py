@@ -12,6 +12,7 @@ from textwrap import dedent
 import os
 import sys
 import logging
+import importlib
 import sqlalchemy as sa
 from sqlalchemy.engine.url import URL
 from osgende.common.status import StatusManager
@@ -90,14 +91,13 @@ class MapStyleDb(object):
             return 1
 
         try:
-            mapdb_pkg = 'db.%s_maptype' % conf.get('MAPTYPE')
-            __import__(mapdb_pkg)
-            mapdb_class = getattr(sys.modules[mapdb_pkg], 'DB')
-        except ImportError:
-            print("Unknown map type '%s'." % conf.get('MAPTYPE'))
+            mapdb_pkg = importlib.import_module(
+                          'db.{}_maptype'.format(conf.get('MAPTYPE')))
+        except ModuleNotFoundError:
+            print("Unknown map type '{}'.".format(conf.get('MAPTYPE')))
             return 1
 
-        self.mapdb = mapdb_class(options)
+        self.mapdb = mapdb_pkg.DB(options)
 
     def construct(self):
         # make sure to delete traces of previous imports
