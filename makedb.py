@@ -92,7 +92,7 @@ class MapStyleDb(object):
 
         try:
             mapdb_pkg = importlib.import_module(
-                          'db.{}_maptype'.format(conf.get('MAPTYPE')))
+                          'db.maptype.' + conf.get('MAPTYPE'))
         except ModuleNotFoundError:
             print("Unknown map type '{}'.".format(conf.get('MAPTYPE')))
             return 1
