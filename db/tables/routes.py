@@ -26,8 +26,6 @@ from shapely.ops import linemerge
 
 from db.common.symbols import ShieldFactory
 from db.common.route_types import Network
-from db.configs import RouteTableConfig
-from db import conf
 
 import sqlalchemy as sa
 from sqlalchemy.sql import functions as saf
@@ -36,8 +34,6 @@ from geoalchemy2 import Geometry
 from geoalchemy2.shape import from_shape
 
 log = logging.getLogger(__name__)
-
-ROUTE_CONF = conf.get('ROUTES', RouteTableConfig)
 
 class RouteRow(dict):
     fields = set(('id', 'intnames', 'name', 'level', 'ref', 'itinary', 'network', 'top', 'geom', 'symbol', 'country'))
@@ -58,22 +54,14 @@ class RouteRow(dict):
             raise ValueError("Bad field " + name)
         self[name] = value
 
-def _compute_route_level(network):
-    # Multi-modal routes might have multiple network tags
-    for n in network.split(';'):
-        if n in ROUTE_CONF.network_map:
-            return ROUTE_CONF.network_map[n]
-
-    return Network.LOC()
-
 
 class Routes(ThreadableDBObject, TableSource):
     """ Table that creates information about the routes. This includes
         general information as well as the geometry.
     """
 
-    def __init__(self, meta, name, relations, ways, hierarchy, countries):
-        table = sa.Table(name, meta,
+    def __init__(self, meta, relations, ways, hierarchy, countries, config):
+        table = sa.Table(config.table_name, meta,
                         sa.Column('id', sa.BigInteger,
                                   primary_key=True, autoincrement=False),
                         sa.Column('name', sa.String),
@@ -89,14 +77,24 @@ class Routes(ThreadableDBObject, TableSource):
 
         super().__init__(table, relations.change)
 
+        self.config = config
+
         self.rels = relations
         self.ways = ways
         self.rtree = hierarchy
         self.countries = countries
 
-        self.symbols = ShieldFactory(*ROUTE_CONF.symbols)
+        self.symbols = ShieldFactory(*config.symbols)
 
         self.numthreads = meta.info.get('num_threads', 1)
+
+    def _compute_route_level(self, network):
+        # Multi-modal routes might have multiple network tags
+        for n in network.split(';'):
+            if n in self.config.network_map:
+                return self.config.network_map[n]
+
+        return Network.LOC()
 
 
     def _insert_objects(self, conn, subsel=None):
@@ -217,7 +215,7 @@ class Routes(ThreadableDBObject, TableSource):
             elif k.startswith('name:'):
                 outtags.intnames[k[5:]] = v
             elif k == 'network':
-                outtags.level = _compute_route_level(v)
+                outtags.level = self._compute_route_level(v)
 
         if tags.get('network:type') == 'node_network':
             outtags.level = Network.LOC.min()
@@ -277,8 +275,8 @@ class Routes(ThreadableDBObject, TableSource):
         outtags.symbol = self.symbols.create_write(tags, cntry, outtags.level)
 
         # custom filter callback
-        if ROUTE_CONF.tag_filter is not None:
-            ROUTE_CONF.tag_filter(outtags, tags)
+        if self.config.tag_filter is not None:
+            self.config.tag_filter(outtags, tags)
 
         if outtags.network is None:
             if tags.get('network:type') == 'node_network':

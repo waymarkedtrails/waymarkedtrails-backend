@@ -1,20 +1,8 @@
+# SPDX-License-Identifier: GPL-3.0-only
+#
 # This file is part of the Waymarked Trails Map Project
 # Copyright (C) 2015 Michael Spreng
-#               2018 Sarah Hoffmann
-#
-# This is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
-# of the License, or any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+#               2018-2020 Sarah Hoffmann
 """ Customized tables for piste routes and ways.
 """
 
@@ -33,12 +21,6 @@ from geoalchemy2.shape import to_shape, from_shape
 from shapely.ops import linemerge
 
 from db.common.symbols import ShieldFactory
-from db.configs import PisteTableConfig, RouteTableConfig
-from db import conf
-
-CONF = conf.get('PISTE', PisteTableConfig)
-
-shield_fab = ShieldFactory(*CONF.symbols)
 
 def _add_piste_columns(table, name):
     table.append_column(sa.Column('name', sa.String))
@@ -48,7 +30,8 @@ def _add_piste_columns(table, name):
     table.append_column(sa.Column('piste', sa.SmallInteger))
     table.append_column(sa.Index('idx_%s_iname' % name, sa.text('upper(name)')))
 
-def _basic_tag_transform(osmid, tags):
+
+def basic_tag_transform(osmid, tags, config):
     outtags = { 'intnames' : {} }
 
     # determine name
@@ -72,9 +55,9 @@ def _basic_tag_transform(osmid, tags):
 
     # determine kind of sports activity
     difficulty = tags.get('piste:difficulty')
-    difficulty = CONF.difficulty_map.get(difficulty, 0)
+    difficulty = config.difficulty_map.get(difficulty, 0)
     outtags['difficulty'] = difficulty
-    outtags['piste'] = CONF.piste_type.get(tags.get('piste:type'), 0)
+    outtags['piste'] = config.piste_type.get(tags.get('piste:type'), 0)
 
     return outtags, difficulty
 
@@ -84,20 +67,25 @@ class PisteRoutes(ThreadableDBObject, TableSource):
         general information as well as the geometry.
     """
 
-    def __init__(self, meta, name, relations, ways, hierarchy, countries):
-        table = sa.Table(name, meta)
+    def __init__(self, meta, relations, ways, hierarchy, countries, config):
+        table = sa.Table(config.table_name, meta)
         table.append_column(sa.Column('id', sa.BigInteger,
                                       primary_key=True, autoincrement=False))
         table.append_column(sa.Column('top', sa.Boolean))
-        _add_piste_columns(table, name)
+        _add_piste_columns(table, config.table_name)
         table.append_column(sa.Column('geom', Geometry('GEOMETRY', srid=ways.srid)))
 
         super().__init__(table, relations.change)
+
+        self.config = config
 
         self.rels = relations
         self.ways = ways
         self.rtree = hierarchy
         self.countries = countries
+
+        self.shield_fab = ShieldFactory(*config.symbols)
+
 
     def _insert_objects(self, conn, subsel=None):
         h = self.rtree.data
@@ -204,7 +192,7 @@ class PisteRoutes(ThreadableDBObject, TableSource):
     def _construct_row(self, obj, conn):
         tags = TagStore(obj['tags'])
 
-        outtags, difficulty = _basic_tag_transform(obj['id'], tags)
+        outtags, difficulty = basic_tag_transform(obj['id'], tags, self.config)
 
         # we don't support hierarchy at the moment
         outtags['top']  = True
@@ -225,7 +213,7 @@ class PisteRoutes(ThreadableDBObject, TableSource):
                 geom = fixed_geom
 
         outtags['geom'] = from_shape(geom, srid=self.c.geom.type.srid)
-        outtags['symbol'] = shield_fab.create_write(tags, '', difficulty)
+        outtags['symbol'] = self.shield_fab.create_write(tags, '', difficulty)
         outtags['id'] = obj['id']
 
         return outtags
@@ -233,13 +221,18 @@ class PisteRoutes(ThreadableDBObject, TableSource):
 
 class PisteWayInfo(PlainWayTable):
 
+    def __init__(self, meta, name, source, osmdata, config):
+        super().__init__(meta, name, source, osmdata)
+        self.config = config
+        self.shield_fab = ShieldFactory(*config.symbols)
+
     def add_columns(self, dest, src):
         _add_piste_columns(dest, 'piste_way_info')
 
     def transform_tags(self, obj):
         tags = TagStore(obj['tags'])
 
-        outtags, difficulty = _basic_tag_transform(obj['id'], tags)
-        outtags['symbol'] = shield_fab.create_write(tags, '', difficulty)
+        outtags, difficulty = basic_tag_transform(obj['id'], tags, self.config)
+        outtags['symbol'] = self.shield_fab.create_write(tags, '', difficulty)
 
         return outtags

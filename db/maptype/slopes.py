@@ -1,20 +1,8 @@
+# SPDX-License-Identifier: GPL-3.0-only
+#
 # This file is part of the Waymarked Trails Map Project
-# Copyright (C) 2015 Sarah Hoffmann
-#
-# This is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
-# of the License, or any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-
+# Copyright (C) 2015 Michael Spreng
+#               2015-2020 Sarah Hoffmann
 """ Database for the combinded route/way view (slopes)
 """
 from collections import namedtuple, OrderedDict
@@ -27,33 +15,26 @@ from osgende.lines import GroupedWayTable
 from sqlalchemy import text, select, func, and_, column, exists, not_
 
 from db.tables.piste import PisteRoutes, PisteWayInfo
-from db.tables.piste import _basic_tag_transform as piste_tag_transform
-from db.configs import SlopeDBConfig, PisteTableConfig
-from db.routes_maptype import DB as RoutesDB
-from db import conf
-
-CONF = conf.get('ROUTEDB', SlopeDBConfig)
-PISTE_CONF = conf.get('PISTE', PisteTableConfig)
+from db.maptype.routes import DB as RoutesDB
 
 class DB(RoutesDB):
-    routeinfo_class = PisteRoutes
-
     def create_tables(self):
         # all the route stuff we take from the RoutesDB implmentation
-        tables = self.create_table_dict()
+        tables = self.create_table_dict(PisteRoutes)
 
         # now create the additional joined ways
-        subset = and_(text(CONF.way_subset),
+        tabname = self.site_config.DB_TABLES
+        subset = and_(text(self.site_config.DB_WAY_SUBSET),
                       column('id').notin_(select([tables['relway'].c.id])))
-        filt = FilteredTable(self.metadata, PISTE_CONF.way_table_name + '_view',
+        filt = FilteredTable(self.metadata, tabname.way_table + '_view',
                              self.osmdata.way, subset)
         tables['norelway_filter'] = filt
-        ways = PisteWayInfo(self.metadata, PISTE_CONF.way_table_name,
-                            filt, self.osmdata)
+        ways = PisteWayInfo(self.metadata, tabname.way_table,
+                            filt, self.osmdata, self.site_config.ROUTES)
         tables['ways'] = ways
 
         cols = ('name', 'symbol', 'difficulty', 'piste')
-        joins = GroupedWayTable(self.metadata, CONF.joinedway_table, ways, cols)
+        joins = GroupedWayTable(self.metadata, tabname.joinedway, ways, cols)
         tables['joined_ways'] = joins
 
         _RouteTables = namedtuple('_RouteTables', tables.keys())
@@ -87,7 +68,7 @@ class DB(RoutesDB):
             for src, sel in todo:
                 for r in conn.execution_options(stream_results=True).execute(sel):
                     tags = TagStore(r["tags"])
-                    t, difficulty = piste_tag_transform(0, tags)
+                    t, difficulty = self.tables.routes.basic_tag_transform(0, tags)
                     sym = src.symbols.create(tags, '', difficulty)
 
                     if sym is not None:

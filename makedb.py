@@ -82,22 +82,20 @@ class MapStyleDb(object):
     def __init__(self, options):
         self.mapname = options.routemap
 
-        os.environ['ROUTEMAPDB_CONF_MODULE'] = 'maps.%s' % options.routemap
-
         try:
-            from db import conf
-        except ImportError:
-            print("Cannot find route map named '%s'." % options.routemap)
+            site_config = importlib.import_module('config.' + self.mapname)
+        except ModuleNotFoundError:
+            print("Cannot find route map named '{}'.".format(self.mapname))
             return 1
 
         try:
             mapdb_pkg = importlib.import_module(
-                          'db.maptype.' + conf.get('MAPTYPE'))
+                          'db.maptype.' + site_config.MAPTYPE)
         except ModuleNotFoundError:
-            print("Unknown map type '{}'.".format(conf.get('MAPTYPE')))
+            print("Unknown map type '{}'.".format(site_config.MAPTYPE))
             return 1
 
-        self.mapdb = mapdb_pkg.DB(options)
+        self.mapdb = mapdb_pkg.DB(site_config, options)
 
     def construct(self):
         # make sure to delete traces of previous imports

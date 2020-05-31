@@ -1,19 +1,7 @@
+# SPDX-License-Identifier: GPL-3.0-only
+#
 # This file is part of the Waymarked Trails Map Project
-# Copyright (C) 2018 Sarah Hoffmann
-#
-# This is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
-# of the License, or any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+# Copyright (C) 2018-2020 Sarah Hoffmann
 
 """ Database for the classic route view (hiking, cycling, etc.)
 """
@@ -32,81 +20,81 @@ from db.tables.routes import Routes
 from db.tables.route_nodes import GuidePosts, NetworkNodes
 from db.tables.updates import UpdatedGeometriesTable
 from db.tables.styles import StyleTable
-from db.configs import RouteDBConfig
-from db import conf
-
-CONFIG = conf.get('ROUTEDB', RouteDBConfig)
 
 
 class DB(osgende.MapDB):
-    routeinfo_class = Routes
 
-    def __init__(self, options):
-        setattr(options, 'schema', CONFIG.schema)
+    def __init__(self, site_config, options):
+        self.site_config = site_config
+        setattr(options, 'schema', site_config.DB_SCHEMA)
         osgende.MapDB.__init__(self, options)
 
-        country = CountryGrid(MetaData(), CONFIG.country_table)
-        if not self.get_option('no_engine') and not country.data.exists(self.engine):
-            raise RuntimeError("No country table found.")
+        if not self.get_option('no_engine'):
+            country = CountryGrid(MetaData(), site_config.DB_TABLES.country)
+            if not country.data.exists(self.engine):
+                raise RuntimeError("No country table found.")
 
-    def create_table_dict(self):
-        self.metadata.info['srid'] = CONFIG.srid
+    def create_table_dict(self, route_class=Routes):
+        self.metadata.info['srid'] = self.site_config.DB_SRID
         self.metadata.info['num_threads'] = self.get_option('numthreads')
+
+        tabname = self.site_config.DB_TABLES
 
         tables = OrderedDict()
         # first the update table: stores all modified routes, points
-        uptable = UpdatedGeometriesTable(self.metadata, CONFIG.change_table)
+        uptable = UpdatedGeometriesTable(self.metadata, tabname.change)
         tables['updates'] = uptable
 
         # First we filter all route relations into an extra table.
-        rfilt = FilteredTable(self.metadata, CONFIG.route_filter_table,
+        rfilt = FilteredTable(self.metadata, tabname.route_filter,
                               self.osmdata.relation,
-                              text("(%s)" % CONFIG.relation_subset))
+                              text("(%s)" % self.site_config.DB_ROUTE_SUBSET))
         tables['relfilter'] = rfilt
 
         # Then we create the connection between ways and relations.
         # This also adds geometries.
-        relway = RelationWayTable(self.metadata, CONFIG.way_relation_table,
+        relway = RelationWayTable(self.metadata, tabname.way_relation,
                                   self.osmdata.way, rfilt, osmdata=self.osmdata)
         tables['relway'] = relway
 
         # From that create the segmented table.
-        segments = SegmentsTable(self.metadata, CONFIG.segment_table, relway,
+        segments = SegmentsTable(self.metadata, tabname.segment, relway,
                                  (relway.c.rels,))
         tables['segments'] = segments
 
         # hierarchy table for super relations
-        rtree = RelationHierarchy(self.metadata, CONFIG.hierarchy_table, rfilt)
+        rtree = RelationHierarchy(self.metadata, tabname.hierarchy, rfilt)
         tables['hierarchy'] = rtree
 
         # routes table: information about each route
-        routes = self.routeinfo_class(self.metadata, CONFIG.route_table,
-                                      rfilt, relway, rtree,
-                                      CountryGrid(MetaData(), CONFIG.country_table))
+        routes = route_class(self.metadata, rfilt, relway, rtree,
+                             CountryGrid(MetaData(), tabname.country),
+                             self.site_config.ROUTES)
         tables['routes'] = routes
 
         # finally the style table for rendering
         style = StyleTable(self.metadata, routes, segments, rtree,
-                           conf.get('DEFSTYLE'), uptable)
+                           self.site_config.DEFSTYLE, uptable)
         tables['style'] = style
 
         # optional table for guide posts
-        if conf.isdef('GUIDEPOSTS'):
-            cfg = conf.get('GUIDEPOSTS')
+        if self.site_config.GUIDEPOSTS is not None:
+            cfg = self.site_config.GUIDEPOSTS
             filt = FilteredTable(self.metadata, cfg.table_name + '_view',
                                  self.osmdata.node, text(cfg.node_subset),
                                  view_only=True)
             tables['gp_filter'] = filt
-            tables['guideposts'] = GuidePosts(self.metadata, filt)
+            tables['guideposts'] = GuidePosts(self.metadata, filt, cfg)
+
         # optional table for network nodes
-        if conf.isdef('NETWORKNODES'):
-            cfg = conf.get('NETWORKNODES')
+        if self.site_config.NETWORKNODES is not None:
+            cfg = self.site_config.NETWORKNODES
             filt = FilteredTable(self.metadata, cfg.table_name + '_view',
                                  self.osmdata.node,
                                  self.osmdata.node.c.tags.has_key(cfg.node_tag),
                                  view_only=True)
             tables['nnodes_filter'] = filt
-            tables['networknodes'] = NetworkNodes(self.metadata, filt)
+            tables['networknodes'] = NetworkNodes(self.metadata, filt, cfg)
 
         return tables
 

@@ -24,19 +24,15 @@ from geoalchemy2 import Geometry
 
 from osgende.generic import TransformedTable
 from osgende.common.tags import TagStore
-from db.configs import GuidePostConfig, NetworkNodeConfig
-from db import conf
-
-
-GUIDEPOST_CONF = conf.get('GUIDEPOSTS', GuidePostConfig)
 
 class GuidePosts(TransformedTable):
     """ Information about guide posts. """
     elepattern = re_compile('[\\d.]+')
 
-    def __init__(self, meta, source):
+    def __init__(self, meta, source, config):
         self.srid = meta.info.get('srid', source.c.geom.type.srid)
-        super().__init__(meta, GUIDEPOST_CONF.table_name, source)
+        super().__init__(meta, config.table_name, source)
+        self.config = config
 
     def add_columns(self, table, src):
         table.append_column(sa.Column('name', sa.String))
@@ -46,13 +42,13 @@ class GuidePosts(TransformedTable):
     def transform(self, obj):
         tags = TagStore(obj['tags'])
         # filter by subtype
-        if GUIDEPOST_CONF.subtype is not None:
+        if self.config.subtype is not None:
             booltags = tags.get_booleans()
             if len(booltags) > 0:
-                if not booltags.get(GUIDEPOST_CONF.subtype, False):
+                if not booltags.get(self.config.subtype, False):
                     return None
             else:
-                if GUIDEPOST_CONF.require_subtype:
+                if self.config.require_subtype:
                     return None
 
         outtags = { 'name' : tags.get('name'), 'ele' : None }
@@ -70,15 +66,14 @@ class GuidePosts(TransformedTable):
         return outtags
 
 
-NETWORKNODE_CONF = conf.get('NETWORKNODES', NetworkNodeConfig)
-
 class NetworkNodes(TransformedTable):
     """ Information about referenced nodes in a route network.
     """
 
-    def __init__(self, meta, source):
+    def __init__(self, meta, source, config):
         self.srid = meta.info.get('srid', source.c.geom.type.srid)
-        super().__init__(meta, NETWORKNODE_CONF.table_name, source)
+        super().__init__(meta, config.table_name, source)
+        self.config = config
 
     def add_columns(self, table, src):
         table.append_column(sa.Column('name', sa.String))
@@ -87,10 +82,10 @@ class NetworkNodes(TransformedTable):
     def transform(self, obj):
         tags = TagStore(obj['tags'])
 
-        if NETWORKNODE_CONF.node_tag not in tags:
+        if self.config.node_tag not in tags:
             return None
 
-        outtags = { 'name' : tags[NETWORKNODE_CONF.node_tag] }
+        outtags = { 'name' : tags[self.config.node_tag] }
 
         if self.srid == self.src.c.geom.type.srid:
             outtags['geom'] = obj['geom']
