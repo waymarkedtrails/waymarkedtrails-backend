@@ -1,21 +1,8 @@
 #!/usr/bin/python3
+# SPDX-License-Identifier: GPL-3.0-only
+#
 # This file is part of the Waymarked Trails Map Project
-# Copyright (C) 2011-2015 Sarah Hoffmann
-#
-# This is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
-# of the License, or any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-
+# Copyright (C) 2011-2020 Sarah Hoffmann
 """
 Create, import and modify tables for a route map.
 """
@@ -27,29 +14,57 @@ import sys
 import logging
 import sqlalchemy as sa
 from sqlalchemy.engine.url import URL
+from osgende.common.status import StatusManager
 
 from config import defaults as config
 
-def prepare(options):
-    dba = URL('postgresql', username=options.username,
-                  password=options.password, database=options.database)
-    engine = sa.create_engine(dba, echo=options.echo_sql)
-    """ Creates the necessary indices on a new DB."""
-    #engine.execute("CREATE INDEX idx_relation_member ON relation_members USING btree (member_id, member_type)")
-    #engine.execute("idx_nodes_tags ON nodes USING GIN(tags)")
-    #engine.execute("idx_ways_tags ON ways USING GIN(tags)")
-    #engine.execute("idx_relations_tags ON relations USING GIN(tags)")
-    engine.execute("CREATE INDEX idx_node_changeset on node_changeset(id)")
+class BaseDb(object):
 
-    engine.execute("ANALYSE")
-    engine.execute("CREATE EXTENSION pg_trgm")
+    def __init__(self, options):
+        dba = URL('postgresql', username=options.username,
+                      password=options.password, database=options.database)
+        self.engine = sa.create_engine(dba, echo=options.echo_sql)
+        self.options = options
 
-def handle_base_db(mapdb_class, options):
-    if options.action == 'prepare':
-        prepare(options)
+    def prepare(self):
+        """ Creates the necessary indices on a new DB."""
+        with self.engine.begin() as conn:
+            conn.execute("CREATE INDEX idx_node_changeset on node_changeset(id)")
+            conn.execute("ANALYSE")
+            conn.execute("CREATE EXTENSION pg_trgm")
+
         return 0
 
-    if options.action in ('import', 'update'):
+    def construct(self):
+        args = self._osgende_import_args()
+        args.extend(('-i', '-c', options.input_file))
+
+        print('osgende-import', args)
+        os.execvp('osgende-import', args)
+
+        return 1
+
+    def update(self):
+        if not self._is_base_map_update_needed():
+            print("Derived maps not yet updated. Skipping base map update.")
+            return 0
+
+        args = self._osgende_import_args()
+        args.extend(('-S', str(options.diff_size * 1024)))
+
+        print('osgende-import', args)
+        os.execvp('osgende-import', args)
+
+        return 1
+
+    def _is_base_map_update_needed(self):
+        status = StatusManager(sa.MetaData())
+        basemap_seq = status.get_sequence(self.engine, 'base')
+        oldest = status.get_min_sequence(self.engine)
+
+        return basemap_seq <= oldest
+
+    def _osgende_import_args(self):
         args = ['osgende-import', '-d', options.database, '-r', options.replication]
         if options.username:
             args.extend(('-u', options.username))
@@ -57,56 +72,69 @@ def handle_base_db(mapdb_class, options):
             args.extend(('-p', options.password))
         if options.nodestore:
             args.extend(('-n', options.nodestore))
-        if options.action == 'import':
-            args.extend(('-i', '-c'))
-            args.append(options.input_file)
-        else:
-            mapdb = mapdb_class(options)
-            with mapdb.engine.begin() as conn:
-                basemap_seq = mapdb.status.get_sequence(conn, 'base')
-                oldest = mapdb.status.get_min_sequence(conn)
-            if basemap_seq > oldest:
-                print("Derived maps not yet updated. Skipping base map update.")
-                exit(0)
-            args.extend(('-S', str(options.diff_size*1024)))
 
-        print('osgende-import', args)
-        os.execvp('osgende-import', args)
-    else:
-        print("Unknown action '%s' for DB." % options.action)
+        return args
 
-    return 1
 
-def handle_route_db(mapname, mapdb_class, options):
-    mapdb = mapdb_class(options)
+class MapStyleDb(object):
 
-    with mapdb.engine.begin() as conn:
-        basemap_seq = mapdb.status.get_sequence(conn, 'base')
-        map_date = mapdb.status.get_sequence(conn, mapname)
+    def __init__(self, options):
+        self.mapname = options.routemap
 
-    if options.action == 'update':
-        if map_date is None:
-            print("Map not available.")
-            exit(1)
+        os.environ['ROUTEMAPDB_CONF_MODULE'] = 'maps.%s' % options.routemap
 
-        if basemap_seq <= map_date:
-            print("Data already up-to-date. Skipping.")
-            exit(0)
+        try:
+            from db import conf
+        except ImportError:
+            print("Cannot find route map named '%s'." % options.routemap)
+            return 1
 
-    if options.action == 'import':
+        try:
+            mapdb_pkg = 'db.%s_maptype' % conf.get('MAPTYPE')
+            __import__(mapdb_pkg)
+            mapdb_class = getattr(sys.modules[mapdb_pkg], 'DB')
+        except ImportError:
+            print("Unknown map type '%s'." % conf.get('MAPTYPE'))
+            return 1
+
+        self.mapdb = mapdb_class(options)
+
+    def construct(self):
         # make sure to delete traces of previous imports
-        with mapdb.engine.begin() as conn:
-            mapdb.status.remove_status(conn, mapname)
+        self.mapdb.status.remove_status(self.mapdb.engine, self.mapname)
 
-        mapdb.construct()
-    else:
-        getattr(mapdb, options.action)()
+        self.mapdb.construct()
+        self._finalize(False)
 
-    if options.action in ('import', 'update'):
-        with mapdb.engine.begin() as conn:
-            mapdb.status.set_status_from(conn, mapname, 'base')
+    def update(self):
+        with self.mapdb.engine.begin() as conn:
+            self.basemap_seq = self.mapdb.status.get_sequence(conn, 'base')
+            self.map_date = self.mapdb.status.get_sequence(conn, self.mapname)
 
-    mapdb.finalize(options.action == 'update')
+        if self.map_date is None:
+            print("Map not available.")
+            return 1
+
+        if self.basemap_seq <= self.map_date:
+            print("Data already up-to-date. Skipping.")
+            return 0
+
+        self.mapdb.update()
+        self._finalize(True)
+
+    def create(self):
+        self.mapdb.create()
+
+    def dataview(self):
+        self.mapdb.dataview()
+
+    def mkshield(self):
+        self.mapdb.mkshield()
+
+    def _finalize(self, dovacuum):
+        self.mapdb.status.set_status_from(self.mapdb.engine, self.mapname, 'base')
+        self.mapdb.finalize(dovacuum)
+
 
 if __name__ == "__main__":
     # fun with command line options
@@ -164,25 +192,21 @@ if __name__ == "__main__":
     logging.basicConfig(format='%(asctime)s %(message)s', level=options.loglevel,
                         datefmt='%y-%m-%d %H:%M:%S')
 
-    mapname = 'hiking' if options.routemap == 'db' else options.routemap
-    os.environ['ROUTEMAPDB_CONF_MODULE'] = 'maps.%s' % mapname
-
-    try:
-        from db import conf
-    except ImportError:
-        print("Cannot find route map named '%s'." % options.routemap)
-        raise
-
-    try:
-        mapdb_pkg = 'db.%s_maptype' % conf.get('MAPTYPE')
-        __import__(mapdb_pkg)
-        mapdb_class = getattr(sys.modules[mapdb_pkg], 'DB')
-    except ImportError:
-        print("Unknown map type '%s'." % conf.get('MAPTYPE'))
-        raise
-
     # Update of the base DB.
     if options.routemap == 'db':
-        exit(handle_base_db(mapdb_class, options))
+        db = BaseDb(options)
+        name = 'base'
+    else:
+        db = MapStyleDb(options)
+        name = options.routemap
 
-    handle_route_db(mapname, mapdb_class, options)
+    if options.action == 'import':
+        action = getattr(db, 'construct')
+    else:
+        action = getattr(db, options.action)
+
+    if action is None:
+        print("Action '{}' not available for {} DB.".format(options.action, name))
+        raise
+
+    exit(action())
