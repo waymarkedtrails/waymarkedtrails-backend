@@ -6,6 +6,8 @@
 """ Customized tables for piste routes and ways.
 """
 
+import os
+
 from osgende.common.table import TableSource
 from osgende.common.sqlalchemy import DropIndexIfExists, CreateTableAs
 from osgende.common.threads import ThreadableDBObject
@@ -20,8 +22,6 @@ from geoalchemy2 import Geometry
 from geoalchemy2.shape import to_shape, from_shape
 from shapely.ops import linemerge
 
-from db.common.symbols import ShieldFactory
-
 def _add_piste_columns(table, name):
     table.append_column(sa.Column('name', sa.String))
     table.append_column(sa.Column('intnames', JSONB))
@@ -29,6 +29,15 @@ def _add_piste_columns(table, name):
     table.append_column(sa.Column('difficulty', sa.SmallInteger))
     table.append_column(sa.Column('piste', sa.SmallInteger))
     table.append_column(sa.Index('idx_%s_iname' % name, sa.text('upper(name)')))
+
+def write_symbol(factory, tags, difficulty, datadir):
+    sym = factory.create(tags, '', difficulty=difficulty)
+    if sym is None:
+        return 'None'
+
+    symname = sym.uuid()
+    sym.to_file(os.path.join(datadir, symname + '.svg'), format='svg')
+    return symname
 
 
 def basic_tag_transform(osmid, tags, config):
@@ -67,7 +76,8 @@ class PisteRoutes(ThreadableDBObject, TableSource):
         general information as well as the geometry.
     """
 
-    def __init__(self, meta, relations, ways, hierarchy, countries, config):
+    def __init__(self, meta, relations, ways, hierarchy, countries, config,
+                 shield_factory):
         table = sa.Table(config.table_name, meta)
         table.append_column(sa.Column('id', sa.BigInteger,
                                       primary_key=True, autoincrement=False))
@@ -84,7 +94,7 @@ class PisteRoutes(ThreadableDBObject, TableSource):
         self.rtree = hierarchy
         self.countries = countries
 
-        self.shield_fab = ShieldFactory(*config.symbols)
+        self.shield_fab = shield_factory
 
 
     def _insert_objects(self, conn, subsel=None):
@@ -213,7 +223,8 @@ class PisteRoutes(ThreadableDBObject, TableSource):
                 geom = fixed_geom
 
         outtags['geom'] = from_shape(geom, srid=self.c.geom.type.srid)
-        outtags['symbol'] = self.shield_fab.create_write(tags, '', difficulty)
+        outtags['symbol'] = write_symbol(self.shield_fab, tags, difficulty,
+                                         self.config.symbol_datadir)
         outtags['id'] = obj['id']
 
         return outtags
@@ -221,10 +232,10 @@ class PisteRoutes(ThreadableDBObject, TableSource):
 
 class PisteWayInfo(PlainWayTable):
 
-    def __init__(self, meta, name, source, osmdata, config):
+    def __init__(self, meta, name, source, osmdata, config, shield_factory):
         super().__init__(meta, name, source, osmdata)
         self.config = config
-        self.shield_fab = ShieldFactory(*config.symbols)
+        self.shield_fab = shield_factory
 
     def add_columns(self, dest, src):
         _add_piste_columns(dest, 'piste_way_info')
@@ -233,6 +244,7 @@ class PisteWayInfo(PlainWayTable):
         tags = TagStore(obj['tags'])
 
         outtags, difficulty = basic_tag_transform(obj['id'], tags, self.config)
-        outtags['symbol'] = self.shield_fab.create_write(tags, '', difficulty)
+        outtags['symbol'] = write_symbol(self.shield_fab, tags, difficulty,
+                                         self.config.symbol_datadir)
 
         return outtags

@@ -86,14 +86,14 @@ class MapStyleDb(object):
             site_config = importlib.import_module('config.' + self.mapname)
         except ModuleNotFoundError:
             print("Cannot find route map named '{}'.".format(self.mapname))
-            return 1
+            raise
 
         try:
             mapdb_pkg = importlib.import_module(
                           'db.maptype.' + site_config.MAPTYPE)
         except ModuleNotFoundError:
             print("Unknown map type '{}'.".format(site_config.MAPTYPE))
-            return 1
+            raise
 
         self.mapdb = mapdb_pkg.DB(site_config, options)
 

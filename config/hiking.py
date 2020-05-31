@@ -3,9 +3,12 @@
 # This file is part of the Waymarked Trails Map Project
 # Copyright (C) 2020 Sarah Hoffmann
 
+import os
+
 from types import MethodType
 from db.styles.route_network_style import RouteNetworkStyle
 from db.common.route_types import Network
+from wmt_shields.wmt_config import WmtConfig
 
 from config.common import *
 
@@ -94,17 +97,34 @@ ROUTES.network_map = {
         'lwn': Network.LOC()
         }
 ROUTES.tag_filter = filter_route_tags
-ROUTES.symbols = ( 'ShieldImage',
-                   'SwissMobile',
-                   'JelRef',
-                   'KCTRef',
-                   'ItalianHikingRefs',
-                   'OSMCSymbol',
-                   'TextColorBelow',
-                   'TextSymbol')
+ROUTES.symbols = ( '.image_symbol',
+                   '.swiss_mobile',
+                   '.jel_symbol',
+                   '.kct_symbol',
+                   '.cai_hiking_symbol',
+                   '.osmc_symbol',
+                   '.ref_color_symbol',
+                   '.ref_symbol')
+ROUTES.symbol_datadir = os.path.join(MEDIA_DIR, 'symbols/hiking')
 
 GUIDEPOSTS = GuidePostConfig()
 GUIDEPOSTS.subtype = 'hiking'
 
 NETWORKNODES = NetworkNodeConfig()
 NETWORKNODES.node_tag = 'rwn_ref'
+
+
+SYMBOLS = WmtConfig()
+SYMBOLS.shield_names = {
+    # with friendly permission of Vogelsberg Touristik
+    'vr_vb' :        {'operator':'Vogelsberger Höhenclub',
+                      'name':'Vulkanring Vogelsberg'},
+    # permission via Kulturverein Storndorf
+    'judenpfad_vb' : { 'name' : 'Judenpfad Vogelsberg' },
+    # permisson from Verkehrsverein Much
+    'igel_much19' :  {'operator' : 'Verkehrsverein Much e.V.',
+                      'name':'Familienwanderweg Much'},
+    # permission from Stadtmarketing Eupen
+    'eupen' : { 'operator' : 'Stadt Eupen - Stadtmarketing',
+                'name' : 'Eupen rundum'},
+}

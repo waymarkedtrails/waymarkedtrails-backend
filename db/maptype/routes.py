@@ -12,6 +12,7 @@ from osgende.generic import FilteredTable
 from osgende.lines import RelationWayTable, SegmentsTable
 from osgende.relations import RelationHierarchy
 from osgende.common.tags import TagStore
+from wmt_shields import ShieldFactory
 
 from sqlalchemy import MetaData, select, text
 
@@ -34,7 +35,7 @@ class DB(osgende.MapDB):
             if not country.data.exists(self.engine):
                 raise RuntimeError("No country table found.")
 
-    def create_table_dict(self, route_class=Routes):
+    def create_table_dict(self, symbol_factory, route_class=Routes):
         self.metadata.info['srid'] = self.site_config.DB_SRID
         self.metadata.info['num_threads'] = self.get_option('numthreads')
 
@@ -69,7 +70,7 @@ class DB(osgende.MapDB):
         # routes table: information about each route
         routes = route_class(self.metadata, rfilt, relway, rtree,
                              CountryGrid(MetaData(), tabname.country),
-                             self.site_config.ROUTES)
+                             self.site_config.ROUTES, symbol_factory)
         tables['routes'] = routes
 
         # finally the style table for rendering
@@ -99,7 +100,9 @@ class DB(osgende.MapDB):
         return tables
 
     def create_tables(self):
-        tables = self.create_table_dict()
+        symbol_factory = ShieldFactory(self.site_config.ROUTES.symbols,
+                                       self.site_config.SYMBOLS)
+        tables = self.create_table_dict(symbol_factory)
 
         _RouteTables = namedtuple('_RouteTables', tables.keys())
 

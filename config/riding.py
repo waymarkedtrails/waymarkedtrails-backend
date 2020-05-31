@@ -3,8 +3,11 @@
 # This file is part of the Waymarked Trails Map Project
 # Copyright (C) 2020 Sarah Hoffmann
 
+import os
+
 from db.styles.route_network_style import RouteNetworkStyle
 from db.common.route_types import Network
+from wmt_shields.wmt_config import WmtConfig
 
 from config.common import *
 
@@ -31,9 +34,10 @@ ROUTES.network_map = {
         'lwn': Network.LOC(0),
         'lcn': Network.LOC(0),
         }
-ROUTES.symbols = ( 'OSMCSymbol',
-                   'TextSymbol',
-                   'ColorBox')
+ROUTES.symbols = ( '.osmc_symbol',
+                   '.ref_symbol',
+                   '.color_box')
+ROUTES.symbol_datadir = os.path.join(MEDIA_DIR, 'symbols/riding')
 
 GUIDEPOSTS = GuidePostConfig()
 GUIDEPOSTS.subtype = 'horse'
@@ -43,3 +47,5 @@ NETWORKNODES = NetworkNodeConfig()
 NETWORKNODES.node_tag = 'rhn_ref'
 
 DEFSTYLE = RouteNetworkStyle()
+
+SYMBOLS = WmtConfig()

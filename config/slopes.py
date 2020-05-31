@@ -3,7 +3,11 @@
 # This file is part of the Waymarked Trails Map Project
 # Copyright (C) 2020 Sarah Hoffmann
 
+import os
+
 from db.styles.piste_network_style import PisteNetworkStyle
+from wmt_shields.wmt_config import WmtConfig
+
 from config.common import *
 
 MAPTYPE = 'slopes'
@@ -25,6 +29,12 @@ DB_WAY_SUBSET = """
     AND NOT (tags->>'piste:type' = 'skitour')"""
 
 ROUTES = PisteTableConfig()
-ROUTES.symbols = ('Slopes', 'Nordic')
+ROUTES.symbols = ('.slope_symbol', '.nordic_symbol')
+ROUTES.symbol_datadir = os.path.join(MEDIA_DIR, 'symbols/slopes')
 
 DEFSTYLE = PisteNetworkStyle(ROUTES.difficulty_map, ROUTES.piste_type)
+
+SYMBOLS = WmtConfig()
+SYMBOLS.image_size = (20, 20)
+SYMBOLS.text_color = (1, 1, 1) # white
+SYMBOLS.text_bgcolor = (0, 0, 0) # black

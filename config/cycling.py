@@ -3,8 +3,12 @@
 # This file is part of the Waymarked Trails Map Project
 # Copyright (C) 2020 Sarah Hoffmann
 
+import os
+
 from db.styles.route_network_style import RouteNetworkStyle
 from db.common.route_types import Network
+from wmt_shields.wmt_config import WmtConfig
+import wmt_shields.filters as filters
 
 from config.common import *
 
@@ -25,12 +29,14 @@ ROUTES.network_map = {
         'rcn': Network.REG(0),
         'lcn': Network.LOC(0)
         }
-ROUTES.symbols = ( 'NorwichColorBox',
-                   'SwissMobile',
-                   'JelRef',
-                   'TextColorBelow',
-                   'TextSymbol',
-                   'ColorBox')
+ROUTES.symbols = ( filters.tags_all('.color_box',
+                                  {'operator' : 'Norwich City Council',}),
+                   '.swiss_mobile',
+                   '.jel_symbol',
+                   '.ref_color_symbol',
+                   '.ref_symbol',
+                   '.color_box')
+ROUTES.symbol_datadir = os.path.join(MEDIA_DIR, 'symbols/cycling')
 
 GUIDEPOSTS = GuidePostConfig()
 GUIDEPOSTS.subtype = 'bicycle'
@@ -40,3 +46,8 @@ NETWORKNODES = NetworkNodeConfig()
 NETWORKNODES.node_tag = 'rcn_ref'
 
 DEFSTYLE = RouteNetworkStyle()
+
+SYMBOLS = WmtConfig()
+SYMBOLS.swiss_mobil_bgcolor = (0.66, 0.93, 1.0)
+SYMBOLS.swiss_mobil_networks = ('rcn', 'ncn')
+

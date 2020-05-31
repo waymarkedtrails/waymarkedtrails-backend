@@ -3,8 +3,11 @@
 # This file is part of the Waymarked Trails Map Project
 # Copyright (C) 2020 Sarah Hoffmann
 
+import os
+
 from db.styles.route_network_style import RouteNetworkStyle
 from db.common.route_types import Network
+from wmt_shields.wmt_config import WmtConfig
 
 from config.common import *
 
@@ -25,14 +28,19 @@ ROUTES.network_map = {
         'rcn': Network.REG(0),
         'lcn': Network.LOC(0)
         }
-ROUTES.symbols = ( 'SwissMobile',
-                   'TextSymbol',
-                   'JelRef',
-                   'ColorBox')
+ROUTES.symbols = ('.swiss_mobile',
+                  '.jel_symbol',
+                  '.ref_symbol',
+                  '.color_box')
+ROUTES.symbol_datadir = os.path.join(MEDIA_DIR, 'symbols/cycling')
 
 GUIDEPOSTS = GuidePostConfig()
 GUIDEPOSTS.subtype = 'mtb'
 GUIDEPOSTS.require_subtype = True
 
 DEFSTYLE = RouteNetworkStyle()
+
+SYMBOLS = WmtConfig()
+SYMBOLS.swiss_mobil_bgcolor = (0.88, 0.83, 0.32)
+SYMBOLS.swiss_mobil_networks = ('rcn', 'ncn')
 

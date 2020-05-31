@@ -16,6 +16,7 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 import logging
+import os
 
 from osgende.common.table import TableSource
 from osgende.common.sqlalchemy import DropIndexIfExists, CreateTableAs
@@ -24,7 +25,6 @@ from osgende.common.tags import TagStore
 from osgende.common.build_geometry import build_route_geometry
 from shapely.ops import linemerge
 
-from db.common.symbols import ShieldFactory
 from db.common.route_types import Network
 
 import sqlalchemy as sa
@@ -60,7 +60,8 @@ class Routes(ThreadableDBObject, TableSource):
         general information as well as the geometry.
     """
 
-    def __init__(self, meta, relations, ways, hierarchy, countries, config):
+    def __init__(self, meta, relations, ways, hierarchy, countries, config,
+                 shield_factory):
         table = sa.Table(config.table_name, meta,
                         sa.Column('id', sa.BigInteger,
                                   primary_key=True, autoincrement=False),
@@ -84,7 +85,7 @@ class Routes(ThreadableDBObject, TableSource):
         self.rtree = hierarchy
         self.countries = countries
 
-        self.symbols = ShieldFactory(*config.symbols)
+        self.symbols = shield_factory
 
         self.numthreads = meta.info.get('num_threads', 1)
 
@@ -272,7 +273,15 @@ class Routes(ThreadableDBObject, TableSource):
             cntry = None
 
         outtags.country = cntry
-        outtags.symbol = self.symbols.create_write(tags, cntry, outtags.level)
+
+        sym = self.symbols.create(tags, cntry,
+                                  style=Network.from_int(outtags.level).name)
+        if sym is None:
+            outtags.symbol = 'None'
+        else:
+            outtags.symbol = sym.uuid()
+            sym.to_file(os.path.join(self.config.symbol_datadir,
+                                     outtags.symbol + '.svg'), format='svg')
 
         # custom filter callback
         if self.config.tag_filter is not None:

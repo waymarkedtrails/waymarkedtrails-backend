@@ -5,6 +5,8 @@
 
 # Common options
 
+MEDIA_DIR = 'data'
+
 DB_SCHEMA = None
 DB_SRID = 3857
 

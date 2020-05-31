@@ -11,6 +11,7 @@ import osgende
 from osgende.generic import FilteredTable
 from osgende.common.tags import TagStore
 from osgende.lines import GroupedWayTable
+from wmt_shields import ShieldFactory
 
 from sqlalchemy import text, select, func, and_, column, exists, not_
 
@@ -19,8 +20,11 @@ from db.maptype.routes import DB as RoutesDB
 
 class DB(RoutesDB):
     def create_tables(self):
+        symbol_factory = ShieldFactory(self.site_config.ROUTES.symbols,
+                                       self.site_config.SYMBOLS)
+
         # all the route stuff we take from the RoutesDB implmentation
-        tables = self.create_table_dict(PisteRoutes)
+        tables = self.create_table_dict(symbol_factory, PisteRoutes)
 
         # now create the additional joined ways
         tabname = self.site_config.DB_TABLES
@@ -30,7 +34,8 @@ class DB(RoutesDB):
                              self.osmdata.way, subset)
         tables['norelway_filter'] = filt
         ways = PisteWayInfo(self.metadata, tabname.way_table,
-                            filt, self.osmdata, self.site_config.ROUTES)
+                            filt, self.osmdata, self.site_config.ROUTES,
+                            symbol_factory)
         tables['ways'] = ways
 
         cols = ('name', 'symbol', 'difficulty', 'piste')
