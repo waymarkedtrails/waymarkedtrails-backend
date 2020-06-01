@@ -3,7 +3,22 @@
 # This file is part of the Waymarked Trails Map Project
 # Copyright (C) 2015-2020 Sarah Hoffmann
 
-# Common options
+#############################################################################
+#
+# Database settings
+
+DB_NAME = 'planet'
+DB_USER = None
+DB_PASSWORD = None
+DB_RO_USER = 'www-data'
+DB_NODESTORE = None
+
+REPLICATION_URL='https://planet.openstreetmap.org/replication/minute/'
+REPLICATION_SIZE=50
+
+#############################################################################
+#
+# Common options for map styles
 
 MEDIA_DIR = 'data'
 
@@ -13,6 +28,8 @@ DB_SRID = 3857
 GUIDEPOSTS = None
 NETWORKNODES = None
 
+#############################################################################
+#
 # Configuration classes to be used in derived config
 
 class RouteDBTables(object):
@@ -67,4 +84,13 @@ class PisteTableConfig(object):
                   # unknown value : 0
                  }
 
+
+#############################################################################
+#
+# Local settings
+
+try:
+    from config.local import *
+except ImportError:
+    pass # no local settings provided
 

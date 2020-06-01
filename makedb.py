@@ -17,7 +17,7 @@ import sqlalchemy as sa
 from sqlalchemy.engine.url import URL
 from osgende.common.status import StatusManager
 
-from config import defaults as config
+import config.common as config
 
 class BaseDb(object):
 
