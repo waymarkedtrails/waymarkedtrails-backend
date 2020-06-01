@@ -7,6 +7,8 @@
 #
 # Database settings
 
+import os.path as op
+
 DB_NAME = 'planet'
 DB_USER = None
 DB_PASSWORD = None
@@ -15,6 +17,7 @@ DB_NODESTORE = None
 
 REPLICATION_URL='https://planet.openstreetmap.org/replication/minute/'
 REPLICATION_SIZE=50
+
 
 #############################################################################
 #
@@ -93,4 +96,25 @@ try:
     from config.local import *
 except ImportError:
     pass # no local settings provided
+
+
+#############################################################################
+#
+# Basic render settings
+
+if globals().get('TILE_CACHE') is None:
+    TILE_CACHE = {
+        'type' : "PostgresCache",
+        'empty_tile' : { 'png' : op.join(MEDIA_DIR, 'symbols/misc/empty.png') },
+        'dba' : 'dbname=tiles',
+        'max_zoom' : 15
+    }
+
+if globals().get('RENDERER') is None:
+    RENDERER = {
+        'source_type' : 'xml',
+        'tile_size' : (256, 256),
+        'max_zoom' : 18
+    }
+
 

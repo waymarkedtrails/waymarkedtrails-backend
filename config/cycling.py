@@ -51,3 +51,8 @@ SYMBOLS = WmtConfig()
 SYMBOLS.swiss_mobil_bgcolor = (0.66, 0.93, 1.0)
 SYMBOLS.swiss_mobil_networks = ('rcn', 'ncn')
 
+#############################################################################
+#
+# Render settings
+
+RENDERER['source'] = 'map-styles/cyclingmap.xml'

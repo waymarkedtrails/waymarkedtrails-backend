@@ -128,3 +128,9 @@ SYMBOLS.shield_names = {
     'eupen' : { 'operator' : 'Stadt Eupen - Stadtmarketing',
                 'name' : 'Eupen rundum'},
 }
+
+#############################################################################
+#
+# Render settings
+
+RENDERER['source'] = 'map-styles/hikingmap.xml'
