@@ -1,0 +1,8 @@
+config/local.py
+data/symbols/hiking/*
+data/symbols/cycling/*
+data/symbols/mtb/*
+data/symbols/riding/*
+data/symbols/skating/*
+data/symbols/slopes/*
+__pycache__
