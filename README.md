@@ -46,7 +46,7 @@ country data. We use the data from the Nominatim project:
 ```
 psql -d planet -c "DROP table IF EXISTS country_osm_grid"
 wget https://nominatim.org/data/country_grid.sql.gz
-zcat country_osm_grid.sql.gz | psql -d planet
+zcat country_grid.sql.gz | psql -d planet
 psql -d planet -c "ALTER TABLE country_osm_grid ADD COLUMN geom geometry(Geometry,3857)"
 psql -d planet -c "UPDATE country_osm_grid SET geom=ST_Transform(geometry, 3857)"
 psql -d planet -c "ALTER TABLE country_osm_grid DROP COLUMN geometry"
