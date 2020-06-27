@@ -12,6 +12,8 @@ from wmt_shields.wmt_config import WmtConfig
 
 from config.common import *
 
+cai_level = { 'T' : '1', 'E' : '2', 'EE' : '3' }
+
 def filter_route_tags(outtags, tags):
     """ Additional tag filtering specifically for hiking routes.
     """
