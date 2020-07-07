@@ -12,7 +12,6 @@ from wmt_shields.wmt_config import WmtConfig
 
 from config.common import *
 
-cai_level = { 'T' : '1', 'E' : '2', 'EE' : '3' }
 
 def filter_route_tags(outtags, tags):
     """ Additional tag filtering specifically for hiking routes.
@@ -48,6 +47,7 @@ def filter_route_tags(outtags, tags):
             outtags.network = 'AL4'
 
     # Italian hiking network (see #266), also uses Swiss system
+    cai_level = { 'T' : '1', 'E' : '2', 'EE' : '3' }
     if outtags.country == 'it' and network == 'lwn' \
         and tags.get('osmc:symbol', '').startswith('red') and 'cai_scale' in tags:
         outtags.network = 'AL' + cai_level.get(tags['cai_scale'], '4')
