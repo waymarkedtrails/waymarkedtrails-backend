@@ -117,6 +117,7 @@ NETWORKNODES.node_tag = 'rwn_ref'
 
 
 SYMBOLS = WmtConfig()
+SYMBOLS.shield_path = os.path.join(os.path.abspath(MEDIA_DIR), 'shields')
 SYMBOLS.shield_names = {
     # with friendly permission of Vogelsberg Touristik
     'vr_vb' :        {'operator':'Vogelsberger Höhenclub',

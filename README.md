@@ -86,3 +86,6 @@ License
 =======
 
 The source code is available under GPLv3. See COPYING for more information.
+
+Images in `data/shields` are an exception. Rights remain with the operators
+of the respective routes.
