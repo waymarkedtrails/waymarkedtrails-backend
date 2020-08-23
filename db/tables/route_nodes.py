@@ -39,6 +39,17 @@ class GuidePosts(TransformedTable):
         table.append_column(sa.Column('ele', sa.String))
         table.append_column(sa.Column('geom', Geometry('POINT', srid=self.srid)))
 
+    def set_update_table(self, table):
+        self.updates = table
+        self.before_update = self._save_added_guideposts
+
+    def _save_added_guideposts(self, engine):
+        sql = sa.except_(sa.select([self.src.c.geom.ST_Transform(self.srid)])
+                           .where(self.src.c.id.in_(self.src.select_add_modify())),
+                         sa.select([self.c.geom])
+                           .where(self.c.id.in_(self.src.select_add_modify())))
+        self.updates.add_from_select(engine, sql)
+
     def transform(self, obj):
         tags = TagStore(obj['tags'])
         # filter by subtype

@@ -86,6 +86,7 @@ class DB(osgende.MapDB):
                                  view_only=True)
             tables['gp_filter'] = filt
             tables['guideposts'] = GuidePosts(self.metadata, filt, cfg)
+            tables['guideposts'].set_update_table(tables['updates'])
 
         # optional table for network nodes
         if self.site_config.NETWORKNODES is not None:
@@ -112,10 +113,13 @@ class DB(osgende.MapDB):
         schema = self.get_option('schema', '')
         if schema:
             schema += '.'
+
+        sql = f"SELECT geom FROM {schema}{self.tables.style.data.name}"
+        if self.site_config.GUIDEPOSTS is not None:
+            sql += f" UNION SELECT geom FROM {schema}{self.tables.guideposts.data.name}"
+
         with self.engine.begin() as conn:
-            conn.execute("""CREATE OR REPLACE VIEW %sdata_view AS
-                            SELECT geom FROM %s%s"""
-                         % (schema, schema, str(self.tables.style.data.name)))
+            conn.execute(f"CREATE OR REPLACE VIEW {schema}data_view AS {sql}")
 
     def mkshield(self):
         route = self.tables.routes
