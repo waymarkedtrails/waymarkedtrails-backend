@@ -36,7 +36,7 @@ from geoalchemy2.shape import from_shape
 log = logging.getLogger(__name__)
 
 class RouteRow(dict):
-    fields = set(('id', 'intnames', 'name', 'level', 'ref', 'itinary', 'network', 'top', 'geom', 'symbol', 'country'))
+    fields = set(('id', 'intnames', 'name', 'level', 'ref', 'itinerary', 'network', 'top', 'geom', 'symbol', 'country'))
 
     def __init__(self, id_):
         for attr in self.fields:
@@ -68,7 +68,7 @@ class Routes(ThreadableDBObject, TableSource):
                         sa.Column('name', sa.String),
                         sa.Column('intnames', JSONB),
                         sa.Column('ref', sa.String),
-                        sa.Column('itinary', JSONB),
+                        sa.Column('itinerary', JSONB),
                         sa.Column('symbol', sa.String),
                         sa.Column('country', sa.String(length=3)),
                         sa.Column('network', sa.String(length=3)),
@@ -205,6 +205,27 @@ class Routes(ThreadableDBObject, TableSource):
             self.thread.conn.execute(self.data.delete().where(self.c.id == obj['id']))
 
 
+    def _make_itinerary(self, tags):
+        ret = []
+
+        frm = tags.get('from')
+        if frm is not None:
+            ret.append(frm)
+
+        via = tags.get('via')
+        if via is not None:
+            if ';' in via:
+                ret.extend(via.split(';'))
+            else:
+                ret.extend(via.split(' - '))
+
+        to = tags.get('to')
+        if to is not None:
+            ret.append(to)
+
+        return ret if ret else None
+
+
     def _construct_row(self, obj, conn):
         tags = TagStore(obj['tags'])
         outtags = RouteRow(obj['id'])
@@ -217,9 +238,13 @@ class Routes(ThreadableDBObject, TableSource):
                 outtags.intnames[k[5:]] = v
             elif k == 'network':
                 outtags.level = self._compute_route_level(v)
+            elif k == 'symbol':
+                outtags.intnames['symbol'] = v
 
         if tags.get('network:type') == 'node_network':
             outtags.level = Network.LOC.min()
+
+        outtags.itinerary = self._make_itinerary(tags)
 
         # child relations
         relids = [ r['id'] for r in obj['members'] if r['type'] == 'R']
