@@ -34,8 +34,8 @@ class DB(RoutesDB):
                              self.osmdata.way, subset)
         tables['norelway_filter'] = filt
         ways = PisteWayInfo(self.metadata, tabname.way_table,
-                            filt, self.osmdata, self.site_config.ROUTES,
-                            symbol_factory)
+                            filt, self.osmdata, tables['updates'],
+                            self.site_config.ROUTES, symbol_factory)
         tables['ways'] = ways
 
         cols = ('name', 'symbol', 'difficulty', 'piste')
