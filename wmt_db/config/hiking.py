@@ -6,11 +6,11 @@
 import os
 
 from types import MethodType
-from db.styles.route_network_style import RouteNetworkStyle
-from db.common.route_types import Network
+from ..styles.route_network_style import RouteNetworkStyle
+from ..common.route_types import Network
 from wmt_shields.wmt_config import WmtConfig
 
-from config.common import *
+from .common import *
 
 cai_level = { 'T' : '1', 'E' : '2', 'EE' : '3' }
 

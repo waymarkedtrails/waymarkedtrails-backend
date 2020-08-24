@@ -5,12 +5,12 @@
 
 import os
 
-from db.styles.route_network_style import RouteNetworkStyle
-from db.common.route_types import Network
+from ..styles.route_network_style import RouteNetworkStyle
+from ..common.route_types import Network
 from wmt_shields.wmt_config import WmtConfig
 import wmt_shields.filters as filters
 
-from config.common import *
+from .common import *
 
 MAPTYPE = 'routes'
 

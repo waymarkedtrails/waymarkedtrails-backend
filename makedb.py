@@ -17,7 +17,7 @@ import sqlalchemy as sa
 from sqlalchemy.engine.url import URL
 from osgende.common.status import StatusManager
 
-import config.common as config
+import wmt_db.config.common as config
 
 class BaseDb(object):
 
@@ -83,14 +83,14 @@ class MapStyleDb(object):
         self.mapname = options.routemap
 
         try:
-            site_config = importlib.import_module('config.' + self.mapname)
+            site_config = importlib.import_module('wmt_db.config.' + self.mapname)
         except ModuleNotFoundError:
             print("Cannot find route map named '{}'.".format(self.mapname))
             raise
 
         try:
             mapdb_pkg = importlib.import_module(
-                          'db.maptype.' + site_config.MAPTYPE)
+                          'wmt_db.maptype.' + site_config.MAPTYPE)
         except ModuleNotFoundError:
             print("Unknown map type '{}'.".format(site_config.MAPTYPE))
             raise

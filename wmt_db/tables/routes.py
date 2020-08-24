@@ -25,7 +25,7 @@ from osgende.common.tags import TagStore
 from osgende.common.build_geometry import build_route_geometry
 from shapely.ops import linemerge
 
-from db.common.route_types import Network
+from ..common.route_types import Network
 
 import sqlalchemy as sa
 from sqlalchemy.sql import functions as saf

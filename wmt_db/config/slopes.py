@@ -5,10 +5,10 @@
 
 import os
 
-from db.styles.piste_network_style import PisteNetworkStyle
+from ..styles.piste_network_style import PisteNetworkStyle
 from wmt_shields.wmt_config import WmtConfig
 
-from config.common import *
+from .common import *
 
 MAPTYPE = 'slopes'
 

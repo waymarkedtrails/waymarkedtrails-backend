@@ -15,8 +15,8 @@ from wmt_shields import ShieldFactory
 
 from sqlalchemy import text, select, func, and_, column, exists, not_
 
-from db.tables.piste import PisteRoutes, PisteWayInfo
-from db.maptype.routes import DB as RoutesDB
+from ..tables.piste import PisteRoutes, PisteWayInfo
+from ..maptype.routes import DB as RoutesDB
 
 class DB(RoutesDB):
     def create_tables(self):

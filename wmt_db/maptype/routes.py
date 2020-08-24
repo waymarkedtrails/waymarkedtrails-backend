@@ -16,11 +16,11 @@ from wmt_shields import ShieldFactory
 
 from sqlalchemy import MetaData, select, text
 
-from db.tables.countries import CountryGrid
-from db.tables.routes import Routes
-from db.tables.route_nodes import GuidePosts, NetworkNodes
-from db.tables.updates import UpdatedGeometriesTable
-from db.tables.styles import StyleTable
+from ..tables.countries import CountryGrid
+from ..tables.routes import Routes
+from ..tables.route_nodes import GuidePosts, NetworkNodes
+from ..tables.updates import UpdatedGeometriesTable
+from ..tables.styles import StyleTable
 
 
 class DB(osgende.MapDB):

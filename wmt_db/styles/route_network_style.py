@@ -18,7 +18,7 @@
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import ARRAY
 
-from db.common.route_types import Network
+from ..common.route_types import Network
 
 class RouteNetworkStyle(object):
     table_name = 'network_style'
