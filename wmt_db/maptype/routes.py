@@ -22,123 +22,114 @@ from ..tables.route_nodes import GuidePosts, NetworkNodes
 from ..tables.updates import UpdatedGeometriesTable
 from ..tables.styles import StyleTable
 
+def create_mapdb(site_config, options, route_class=Routes):
+    setattr(options, 'schema', site_config.DB_SCHEMA)
+    db = osgende.MapDB(options)
+    setattr(db, 'site_config', site_config)
 
-class DB(osgende.MapDB):
+    if not db.get_option('no_engine'):
+        country = CountryGrid(MetaData(), site_config.DB_TABLES.country)
+        if not country.data.exists(db.engine):
+            raise RuntimeError("No country table found.")
 
-    def __init__(self, site_config, options):
-        self.site_config = site_config
-        setattr(options, 'schema', site_config.DB_SCHEMA)
-        osgende.MapDB.__init__(self, options)
+    db.set_metadata('srid', site_config.DB_SRID)
+    db.set_metadata('num_threads', db.get_option('numthreads'))
 
-        if not self.get_option('no_engine'):
-            country = CountryGrid(MetaData(), site_config.DB_TABLES.country)
-            if not country.data.exists(self.engine):
-                raise RuntimeError("No country table found.")
+    tabname = site_config.DB_TABLES
 
-    def create_table_dict(self, symbol_factory, route_class=Routes):
-        self.metadata.info['srid'] = self.site_config.DB_SRID
-        self.metadata.info['num_threads'] = self.get_option('numthreads')
+    # first the update table: stores all modified routes, points
+    uptable = db.add_table('updates',
+                  UpdatedGeometriesTable(db.metadata, tabname.change))
 
-        tabname = self.site_config.DB_TABLES
+    # First we filter all route relations into an extra table.
+    rfilt = db.add_table('relfilter',
+                FilteredTable(db.metadata, tabname.route_filter,
+                              db.osmdata.relation,
+                              text(f"({site_config.DB_ROUTE_SUBSET})")))
 
-        tables = OrderedDict()
-        # first the update table: stores all modified routes, points
-        uptable = UpdatedGeometriesTable(self.metadata, tabname.change)
-        tables['updates'] = uptable
+    # Then we create the connection between ways and relations.
+    # This also adds geometries.
+    relway = db.add_table('relway',
+                 RelationWayTable(db.metadata, tabname.way_relation,
+                                  db.osmdata.way, rfilt, osmdata=db.osmdata))
 
-        # First we filter all route relations into an extra table.
-        rfilt = FilteredTable(self.metadata, tabname.route_filter,
-                              self.osmdata.relation,
-                              text("(%s)" % self.site_config.DB_ROUTE_SUBSET))
-        tables['relfilter'] = rfilt
+    # From that create the segmented table.
+    segments = db.add_table('segments',
+                   SegmentsTable(db.metadata, tabname.segment, relway,
+                                 (relway.c.rels,)))
 
-        # Then we create the connection between ways and relations.
-        # This also adds geometries.
-        relway = RelationWayTable(self.metadata, tabname.way_relation,
-                                  self.osmdata.way, rfilt, osmdata=self.osmdata)
-        tables['relway'] = relway
+    # hierarchy table for super relations
+    rtree = db.add_table('hierarchy',
+                RelationHierarchy(db.metadata, tabname.hierarchy, rfilt))
 
-        # From that create the segmented table.
-        segments = SegmentsTable(self.metadata, tabname.segment, relway,
-                                 (relway.c.rels,))
-        tables['segments'] = segments
-
-        # hierarchy table for super relations
-        rtree = RelationHierarchy(self.metadata, tabname.hierarchy, rfilt)
-        tables['hierarchy'] = rtree
-
-        # routes table: information about each route
-        routes = route_class(self.metadata, rfilt, relway, rtree,
+    # routes table: information about each route
+    routes = db.add_table('routes',
+                 route_class(db.metadata, rfilt, relway, rtree,
                              CountryGrid(MetaData(), tabname.country),
-                             self.site_config.ROUTES, symbol_factory)
-        tables['routes'] = routes
+                             site_config.ROUTES,
+                             ShieldFactory(site_config.ROUTES.symbols,
+                                           site_config.SYMBOLS)))
 
-        # finally the style table for rendering
-        style = StyleTable(self.metadata, routes, segments, rtree,
-                           self.site_config.DEFSTYLE, uptable)
-        tables['style'] = style
+    # finally the style table for rendering
+    style = db.add_table('style',
+                StyleTable(db.metadata, routes, segments, rtree,
+                           site_config.DEFSTYLE, uptable))
 
-        # optional table for guide posts
-        if self.site_config.GUIDEPOSTS is not None:
-            cfg = self.site_config.GUIDEPOSTS
-            filt = FilteredTable(self.metadata, cfg.table_name + '_view',
-                                 self.osmdata.node, text(cfg.node_subset),
-                                 view_only=True)
-            tables['gp_filter'] = filt
-            tables['guideposts'] = GuidePosts(self.metadata, filt, cfg)
-            tables['guideposts'].set_update_table(tables['updates'])
+    # optional table for guide posts
+    if site_config.GUIDEPOSTS is not None:
+        cfg = site_config.GUIDEPOSTS
+        filt = db.add_table('gp_filter',
+                   FilteredTable(db.metadata, cfg.table_name + '_view',
+                                 db.osmdata.node, text(cfg.node_subset),
+                                 view_only=True))
+        db.add_table('guideposts', GuidePosts(db.metadata, filt, cfg))\
+           .set_update_table(uptable)
 
-        # optional table for network nodes
-        if self.site_config.NETWORKNODES is not None:
-            cfg = self.site_config.NETWORKNODES
-            filt = FilteredTable(self.metadata, cfg.table_name + '_view',
-                                 self.osmdata.node,
-                                 self.osmdata.node.c.tags.has_key(cfg.node_tag),
-                                 view_only=True)
-            tables['nnodes_filter'] = filt
-            tables['networknodes'] = NetworkNodes(self.metadata, filt, cfg)
+    # optional table for network nodes
+    if site_config.NETWORKNODES is not None:
+        cfg = site_config.NETWORKNODES
+        filt = db.add_table('nnodes_filter',
+                   FilteredTable(db.metadata, cfg.table_name + '_view',
+                                 db.osmdata.node,
+                                 db.osmdata.node.c.tags.has_key(cfg.node_tag),
+                                 view_only=True))
+        db.add_table('networknodes', NetworkNodes(db.metadata, filt, cfg))
 
-        return tables
+    db.add_function('dataview', _mapdb_dataview)
+    db.add_function('mkshield', _mapdb_mkshield)
 
-    def create_tables(self):
-        symbol_factory = ShieldFactory(self.site_config.ROUTES.symbols,
-                                       self.site_config.SYMBOLS)
-        tables = self.create_table_dict(symbol_factory)
+    return db
 
-        _RouteTables = namedtuple('_RouteTables', tables.keys())
+def _mapdb_dataview(db):
+    schema = db.get_option('schema', '')
+    if schema:
+        schema += '.'
 
-        return _RouteTables(**tables)
+    sql = f"SELECT geom FROM {db.tables.style.data.key}"
+    if db.site_config.GUIDEPOSTS is not None:
+        sql += f" UNION SELECT geom FROM {db.tables.guideposts.data.key}"
 
-    def dataview(self):
-        schema = self.get_option('schema', '')
-        if schema:
-            schema += '.'
+    with db.engine.begin() as conn:
+        conn.execute(f"CREATE OR REPLACE VIEW {schema}data_view AS {sql}")
 
-        sql = f"SELECT geom FROM {schema}{self.tables.style.data.name}"
-        if self.site_config.GUIDEPOSTS is not None:
-            sql += f" UNION SELECT geom FROM {schema}{self.tables.guideposts.data.name}"
+def _mapdb_mkshield(db):
+    route = db.tables.routes
+    rel = db.osmdata.relation.data
+    sel = select([rel.c.tags, route.data.c.country, route.data.c.level])\
+            .where(rel.c.id == route.data.c.id)
 
-        with self.engine.begin() as conn:
-            conn.execute(f"CREATE OR REPLACE VIEW {schema}data_view AS {sql}")
+    donesyms = set()
 
-    def mkshield(self):
-        route = self.tables.routes
-        rel = self.osmdata.relation.data
-        sel = select([rel.c.tags, route.data.c.country, route.data.c.level])\
-                .where(rel.c.id == route.data.c.id)
+    with db.engine.begin() as conn:
+        for r in conn.execution_options(stream_results=True).execute(sel):
+            sym = route.symbols.create(TagStore(r["tags"]), r["country"],
+                                       r["level"])
 
-        donesyms = set()
+            if sym is not None:
+                symid = sym.get_id()
 
-        with self.engine.begin() as conn:
-            for r in conn.execution_options(stream_results=True).execute(sel):
-                sym = route.symbols.create(TagStore(r["tags"]), r["country"],
-                                           r["level"])
-
-                if sym is not None:
-                    symid = sym.get_id()
-
-                    if symid not in donesyms:
-                        donesyms.add(symid)
-                        route.symbols.write(sym, True)
+                if symid not in donesyms:
+                    donesyms.add(symid)
+                    route.symbols.write(sym, True)
 
 

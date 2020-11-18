@@ -93,7 +93,7 @@ class PisteTableConfig(object):
 # Local settings
 
 try:
-    from config.local import *
+    from wmt_db.config.local import *
 except ImportError:
     pass # no local settings provided
 

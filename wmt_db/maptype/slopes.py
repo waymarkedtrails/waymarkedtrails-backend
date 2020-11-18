@@ -16,69 +16,66 @@ from wmt_shields import ShieldFactory
 from sqlalchemy import text, select, func, and_, column, exists, not_
 
 from ..tables.piste import PisteRoutes, PisteWayInfo
-from ..maptype.routes import DB as RoutesDB
+from ..maptype.routes import create_mapdb as create_route_mapdb
 
-class DB(RoutesDB):
-    def create_tables(self):
-        symbol_factory = ShieldFactory(self.site_config.ROUTES.symbols,
-                                       self.site_config.SYMBOLS)
+def create_mapdb(site_config, options):
+    # all the route stuff we take from the RoutesDB implmentation
+    db = create_route_mapdb(site_config, options, PisteRoutes)
 
-        # all the route stuff we take from the RoutesDB implmentation
-        tables = self.create_table_dict(symbol_factory, PisteRoutes)
+    # now create the additional joined ways
+    tabname = site_config.DB_TABLES
+    subset = and_(text(site_config.DB_WAY_SUBSET),
+                  column('id').notin_(select([db.tables.relway.c.id])))
+    filt = db.add_table('norelway_filter',
+               FilteredTable(db.metadata, tabname.way_table + '_view',
+                             db.osmdata.way, subset))
 
-        # now create the additional joined ways
-        tabname = self.site_config.DB_TABLES
-        subset = and_(text(self.site_config.DB_WAY_SUBSET),
-                      column('id').notin_(select([tables['relway'].c.id])))
-        filt = FilteredTable(self.metadata, tabname.way_table + '_view',
-                             self.osmdata.way, subset)
-        tables['norelway_filter'] = filt
-        ways = PisteWayInfo(self.metadata, tabname.way_table,
-                            filt, self.osmdata, tables['updates'],
-                            self.site_config.ROUTES, symbol_factory)
-        tables['ways'] = ways
+    ways = db.add_table('ways',
+               PisteWayInfo(db.metadata, tabname.way_table,
+                            filt, db.osmdata, db.tables.updates,
+                            site_config.ROUTES,
+                            db.tables.routes.shield_fab))
 
-        cols = ('name', 'symbol', 'difficulty', 'piste')
-        joins = GroupedWayTable(self.metadata, tabname.joinedway, ways, cols)
-        tables['joined_ways'] = joins
+    cols = ('name', 'symbol', 'difficulty', 'piste')
+    db.add_table('joinded_ways',
+                 GroupedWayTable(db.metadata, tabname.joinedway, ways, cols))
 
-        _RouteTables = namedtuple('_RouteTables', tables.keys())
+    db.add_function('dataview', _mapdb_dataview)
+    db.add_function('mkshield', _mapdb_mkshield)
 
-        return _RouteTables(**tables)
+    return db
 
-    def dataview(self):
-        schema = self.get_option('schema', '')
-        if schema:
-            schema += '.'
-        with self.engine.begin() as conn:
-            conn.execute("""CREATE OR REPLACE VIEW %sdata_view AS
-                            (SELECT geom FROM %s%s
-                             UNION SELECT geom FROM %s%s)"""
-                         % (schema, schema, str(self.tables.style.data.name),
-                            schema, str(self.tables.ways.data.name)))
+def _mapdb_dataview(db):
+    schema = db.get_option('schema', '')
+    if schema:
+        schema += '.'
 
+    with db.engine.begin() as conn:
+        conn.execute(f"""CREATE OR REPLACE VIEW {schema}data_view AS
+                        (SELECT geom FROM {db.tables.style.data.key}
+                         UNION SELECT geom FROM {db.tables.ways.data.key})""")
 
-    def mkshield(self):
-        route = self.tables.routes
-        sway = self.tables.ways
+def _mapdb_mkshield(db):
+    route = db.tables.routes
+    sway = db.tables.ways
 
-        rel = self.osmdata.relation.data
-        way = self.osmdata.way.data
-        todo = ((route, select([rel.c.tags]).where(rel.c.id == route.data.c.id)),
-                (sway, select([way.c.tags]).where(way.c.id == sway.data.c.id)))
+    rel = db.osmdata.relation.data
+    way = db.osmdata.way.data
+    todo = ((route, select([rel.c.tags]).where(rel.c.id == route.data.c.id)),
+            (sway, select([way.c.tags]).where(way.c.id == sway.data.c.id)))
 
-        donesyms = set()
+    donesyms = set()
 
-        with self.engine.begin() as conn:
-            for src, sel in todo:
-                for r in conn.execution_options(stream_results=True).execute(sel):
-                    tags = TagStore(r["tags"])
-                    t, difficulty = self.tables.routes.basic_tag_transform(0, tags)
-                    sym = src.symbols.create(tags, '', difficulty)
+    with db.engine.begin() as conn:
+        for src, sel in todo:
+            for r in conn.execution_options(stream_results=True).execute(sel):
+                tags = TagStore(r["tags"])
+                t, difficulty = db.tables.routes.basic_tag_transform(0, tags)
+                sym = src.symbols.create(tags, '', difficulty)
 
-                    if sym is not None:
-                        symid = sym.get_id()
+                if sym is not None:
+                    symid = sym.get_id()
 
-                        if symid not in donesyms:
-                            donesyms.add(symid)
-                            src.symbols.write(sym, True)
+                    if symid not in donesyms:
+                        donesyms.add(symid)
+                        src.symbols.write(sym, True)

@@ -95,7 +95,7 @@ class MapStyleDb(object):
             print("Unknown map type '{}'.".format(site_config.MAPTYPE))
             raise
 
-        self.mapdb = mapdb_pkg.DB(site_config, options)
+        self.mapdb = mapdb_pkg.create_mapdb(site_config, options)
 
     def construct(self):
         # make sure to delete traces of previous imports
