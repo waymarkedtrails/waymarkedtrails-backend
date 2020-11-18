@@ -6,3 +6,6 @@ data/symbols/riding/*
 data/symbols/skating/*
 data/symbols/slopes/*
 __pycache__
+coverage.xml
+sonar-project.properties
+wmt_db/config/local.py
