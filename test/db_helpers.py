@@ -18,5 +18,4 @@ class DBValue:
     def __eq__(self, other):
         if isinstance(self.db_type, Geometry):
             return wkt.loads(other) == to_shape(self.value)
-        print("Compare", self.value, self.db_type, other)
         return self.value == other
