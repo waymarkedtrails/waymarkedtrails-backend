@@ -18,7 +18,8 @@ from sqlalchemy import MetaData, select, text
 
 from ..tables.countries import CountryGrid
 from ..tables.routes import Routes
-from ..tables.route_nodes import GuidePosts, NetworkNodes
+from ..tables.guideposts import GuidePosts
+from ..tables.networknodes import NetworkNodes
 from ..tables.updates import UpdatedGeometriesTable
 from ..tables.styles import StyleTable
 
