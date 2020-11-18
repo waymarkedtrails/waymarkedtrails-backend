@@ -9,6 +9,8 @@ import pytest
 import sqlalchemy as sa
 import osgende
 
+from wmt_db.tables.countries import CountryGrid
+
 from db_helpers import DBValue
 
 class Options:
@@ -103,3 +105,33 @@ def mapdb():
 
     yield db
     db.engine.dispose()
+
+@pytest.fixture
+def countries(mapdb):
+    table = CountryGrid(mapdb.metadata, 'countries')
+    table.data.create(bind=mapdb.engine, checkfirst=True)
+
+    with mapdb.engine.begin() as conn:
+        conn.execute(table.data.insert().values([
+            dict(country_code='de', geom='SRID=4326;POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'),
+            dict(country_code='fr', geom='SRID=4326;POLYGON((0 0, 0 1, -1 1, -1 0, 0 0))'),
+        ]))
+
+    return table
+
+class MockShieldFactory:
+
+    def create(self, *args, **kwargs):
+        return self
+
+    def uuid(self):
+        return '123'
+
+    def to_file(self, *args, **kwargs):
+        pass
+
+@pytest.fixture
+def shields():
+    return MockShieldFactory()
+
+

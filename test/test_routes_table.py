@@ -13,36 +13,7 @@ from osgende.osmdata import OsmSourceTables
 from osgende.common.table import TableSource
 
 from wmt_db.tables.routes import Routes
-from wmt_db.tables.countries import CountryGrid
 from wmt_db.common.route_types import Network
-
-@pytest.fixture
-def countries(mapdb):
-    table = CountryGrid(mapdb.metadata, 'countries')
-    table.data.create(bind=mapdb.engine, checkfirst=True)
-
-    with mapdb.engine.begin() as conn:
-        conn.execute(table.data.insert().values([
-            dict(country_code='de', geom='SRID=4326;POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'),
-            dict(country_code='fr', geom='SRID=4326;POLYGON((0 0, 0 1, -1 1, -1 0, 0 0))'),
-        ]))
-
-    return table
-
-class MockShieldFactory:
-
-    def create(self, *args, **kwargs):
-        return self
-
-    def uuid(self):
-        return '123'
-
-    def to_file(self, *args, **kwargs):
-        pass
-
-@pytest.fixture
-def shields():
-    return MockShieldFactory()
 
 @pytest.fixture
 def tags():
@@ -123,4 +94,28 @@ class TestRoutesTable:
              dict(id=2, level=Network.INT()),
              dict(id=3, level=Network.LOC()),
              dict(id=4, level=Network.NAT())
+            ])
+
+    def test_simple_update(self, mapdb, tags, members):
+        mapdb.insert_into('src_rels')\
+            .line(1, tags=tags(name='Old Route'), members=members)\
+            .line(2, tags=tags(ref='1'), members=members)
+
+        mapdb.construct()
+
+        mapdb.table_equals('test', [
+            dict(id=1, name='Old Route'),
+            dict(id=2, ref='1', name=None)
+            ])
+
+        mapdb.modify('src_rels')\
+            .delete(1)\
+            .add(100, tags=tags(name='New Route'), members=members)\
+            .modify(2, tags=tags(name='1'), members=members)
+
+        mapdb.update()
+
+        mapdb.table_equals('test', [
+            dict(id=100, name='New Route'),
+            dict(id=2, name='1', ref=None)
             ])
