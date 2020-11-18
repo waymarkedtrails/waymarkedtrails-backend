@@ -26,12 +26,46 @@ class TableInserter:
     def line(self, oid, **kwargs):
         kwargs['id'] = oid
         with self.engine.begin() as conn:
-            conn.execute(self.table.insert().values(kwargs))
+            conn.execute(self.table.data.insert().values(kwargs))
+        return self
+
+class TableChanger:
+
+    def __init__(self, table, engine):
+        self.table = table
+        self.engine = engine
+
+    def delete(self, oid):
+        with self.engine.begin() as conn:
+            conn.execute(self.table.data.delete().where(self.table.c.id == oid))
+            conn.execute(self.table.change.insert().values([dict(id=oid, action='D')]))
+
+        return self
+
+    def add(self, oid, **kwargs):
+        kwargs['id'] = oid
+        with self.engine.begin() as conn:
+            conn.execute(self.table.data.insert().values(kwargs))
+            conn.execute(self.table.change.insert().values([dict(id=oid, action='A')]))
+
+        return self
+
+    def modify(self, oid, **kwargs):
+        kwargs['id'] = oid
+        with self.engine.begin() as conn:
+            conn.execute(self.table.data.delete().where(self.table.c.id == oid))
+            conn.execute(self.table.data.insert().values(kwargs))
+            conn.execute(self.table.change.insert().values([dict(id=oid, action='M')]))
+
+        return self
 
 class TestableMapDB(osgende.mapdb.MapDB):
 
     def insert_into(self, table):
-        return TableInserter(self.tables[table].data, self.engine)
+        return TableInserter(self.tables[table], self.engine)
+
+    def modify(self, table):
+        return TableChanger(self.tables[table], self.engine)
 
     def table_equals(self, name, expected):
         table = self.tables[name].data

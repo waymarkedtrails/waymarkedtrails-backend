@@ -8,7 +8,6 @@ import sqlalchemy as sa
 from geoalchemy2 import Geometry
 
 from osgende.generic import TransformedTable
-from osgende.common.tags import TagStore
 
 class NetworkNodes(TransformedTable):
     """ Information about referenced nodes in a route network.
@@ -24,7 +23,7 @@ class NetworkNodes(TransformedTable):
         table.append_column(sa.Column('geom', Geometry('POINT', srid=self.srid)))
 
     def transform(self, obj):
-        tags = TagStore(obj['tags'])
+        tags = obj['tags']
 
         if self.config.node_tag not in tags:
             return None
