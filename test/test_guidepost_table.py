@@ -5,9 +5,20 @@
 
 import pytest
 
+from osgende.osmdata import OsmSourceTables
+
 from wmt_db.tables.guideposts import GuidePosts
 from wmt_db.tables.updates import UpdatedGeometriesTable
-from osgende.osmdata import OsmSourceTables
+
+import wmt_db.config.hiking as hiking_config
+import wmt_db.config.cycling as cycling_config
+import wmt_db.config.mtb as mtb_config
+import wmt_db.config.riding as riding_config
+import wmt_db.config.skating as skating_config
+
+@pytest.fixture
+def src(mapdb):
+    return mapdb.add_table('src', OsmSourceTables.create_node_table(mapdb.metadata))
 
 @pytest.fixture
 def tags():
@@ -21,12 +32,11 @@ def tags():
 class TestGuidepostTableNoSubtype:
 
     @pytest.fixture(autouse=True)
-    def init_tables(self, mapdb):
+    def init_tables(self, mapdb, src):
         class Config:
             subtype = None
             table_name = 'test'
 
-        src = mapdb.add_table('src', OsmSourceTables.create_node_table(mapdb.metadata))
         mapdb.add_table('test', GuidePosts(mapdb.metadata, src, Config))
         mapdb.create()
 
@@ -50,13 +60,12 @@ class TestGuidepostTableNoSubtype:
 class TestGuidepostTableWithSubtype:
 
     @pytest.fixture(autouse=True)
-    def init_tables(self, mapdb):
+    def init_tables(self, mapdb, src):
         class Config:
             subtype = 'hiking'
             require_subtype = False
             table_name = 'test'
 
-        src = mapdb.add_table('src', OsmSourceTables.create_node_table(mapdb.metadata))
         mapdb.add_table('test', GuidePosts(mapdb.metadata, src, Config))
         mapdb.create()
         yield
@@ -81,13 +90,12 @@ class TestGuidepostTableWithSubtype:
 class TestGuidepostTableWithRequiredSubtype:
 
     @pytest.fixture(autouse=True)
-    def init_tables(self, mapdb):
+    def init_tables(self, mapdb, src):
         class Config:
             subtype = 'hiking'
             require_subtype = True
             table_name = 'test'
 
-        src = mapdb.add_table('src', OsmSourceTables.create_node_table(mapdb.metadata))
         mapdb.add_table('test', GuidePosts(mapdb.metadata, src, Config))
         mapdb.create()
         yield
@@ -110,13 +118,12 @@ class TestGuidepostTableWithRequiredSubtype:
 class TestGuidepostWithUpdateTable:
 
     @pytest.fixture(autouse=True)
-    def init_tables(self, mapdb):
+    def init_tables(self, mapdb, src):
         class Config:
             subtype = 'hiking'
             require_subtype = False
             table_name = 'test'
 
-        src = mapdb.add_table('src', OsmSourceTables.create_node_table(mapdb.metadata))
         uptable = mapdb.add_table('updates',
                       UpdatedGeometriesTable(mapdb.metadata, 'updates'))
 
@@ -156,3 +163,64 @@ class TestGuidepostWithUpdateTable:
             [dict(geom='POINT(10 10)'),
              dict(geom='POINT(2 2)'),
              dict(geom='POINT(3 3)')])
+
+
+def test_guidepost_hiking_style(mapdb, src, tags):
+    mapdb.add_table('test', GuidePosts(mapdb.metadata, src, hiking_config.GUIDEPOSTS))
+    mapdb.create()
+
+    mapdb.insert_into('src')\
+        .line(1, geom='SRID=4326;POINT(1 1)', tags=tags())\
+        .line(2, geom='SRID=4326;POINT(1 1)', tags=tags(hiking='yes'))\
+
+    mapdb.construct()
+
+    mapdb.table_equals('test', [dict(id=1), dict(id=2)])
+
+def test_guidepost_cycling_style(mapdb, src, tags):
+    mapdb.add_table('test', GuidePosts(mapdb.metadata, src, cycling_config.GUIDEPOSTS))
+    mapdb.create()
+
+    mapdb.insert_into('src')\
+        .line(1, geom='SRID=4326;POINT(1 1)', tags=tags())\
+        .line(2, geom='SRID=4326;POINT(1 1)', tags=tags(bicycle='yes'))\
+
+    mapdb.construct()
+
+    mapdb.table_equals('test', [dict(id=2)])
+
+def test_guidepost_mtb_style(mapdb, src, tags):
+    mapdb.add_table('test', GuidePosts(mapdb.metadata, src, mtb_config.GUIDEPOSTS))
+    mapdb.create()
+
+    mapdb.insert_into('src')\
+        .line(1, geom='SRID=4326;POINT(1 1)', tags=tags())\
+        .line(2, geom='SRID=4326;POINT(1 1)', tags=tags(mtb='yes'))\
+
+    mapdb.construct()
+
+    mapdb.table_equals('test', [dict(id=2)])
+
+def test_guidepost_riding_style(mapdb, src, tags):
+    mapdb.add_table('test', GuidePosts(mapdb.metadata, src, riding_config.GUIDEPOSTS))
+    mapdb.create()
+
+    mapdb.insert_into('src')\
+        .line(1, geom='SRID=4326;POINT(1 1)', tags=tags())\
+        .line(2, geom='SRID=4326;POINT(1 1)', tags=tags(horse='yes'))\
+
+    mapdb.construct()
+
+    mapdb.table_equals('test', [dict(id=2)])
+
+def test_guidepost_skating_style(mapdb, src, tags):
+    mapdb.add_table('test', GuidePosts(mapdb.metadata, src, skating_config.GUIDEPOSTS))
+    mapdb.create()
+
+    mapdb.insert_into('src')\
+        .line(1, geom='SRID=4326;POINT(1 1)', tags=tags())\
+        .line(2, geom='SRID=4326;POINT(1 1)', tags=tags(skating='yes'))\
+
+    mapdb.construct()
+
+    mapdb.table_equals('test', [dict(id=2)])
