@@ -3,27 +3,24 @@
 # This file is part of Waymarked Trails
 # Copyright (C) 2020 Sarah Hoffmann
 
-import logging
 import os
 import dataclasses
 from typing import Dict, List, Union
 
-from osgende.common.table import TableSource
-from osgende.common.sqlalchemy import DropIndexIfExists, CreateTableAs
-from osgende.common.threads import ThreadableDBObject
-from osgende.common.tags import TagStore
-from osgende.common.build_geometry import build_route_geometry
 from shapely.ops import linemerge
-
-from ..common.route_types import Network
-
 import sqlalchemy as sa
 from sqlalchemy.sql import functions as saf
 from sqlalchemy.dialects.postgresql import JSONB
 from geoalchemy2 import Geometry
 from geoalchemy2.shape import from_shape
 
-log = logging.getLogger(__name__)
+from osgende.common.table import TableSource
+from osgende.common.sqlalchemy import DropIndexIfExists, CreateTableAs
+from osgende.common.threads import ThreadableDBObject
+from osgende.common.tags import TagStore
+from osgende.common.build_geometry import build_route_geometry
+
+from ..common.route_types import Network
 
 @dataclasses.dataclass
 class RouteRow:
@@ -71,18 +68,18 @@ class Routes(ThreadableDBObject, TableSource):
     def __init__(self, meta, relations, ways, hierarchy, countries, config,
                  shield_factory):
         table = sa.Table(config.table_name, meta,
-                        sa.Column('id', sa.BigInteger,
-                                  primary_key=True, autoincrement=False),
-                        sa.Column('name', sa.String),
-                        sa.Column('intnames', JSONB),
-                        sa.Column('ref', sa.String),
-                        sa.Column('itinerary', JSONB),
-                        sa.Column('symbol', sa.String),
-                        sa.Column('country', sa.String),
-                        sa.Column('network', sa.String),
-                        sa.Column('level', sa.SmallInteger),
-                        sa.Column('top', sa.Boolean),
-                        sa.Column('geom', Geometry('GEOMETRY', srid=ways.srid)))
+                         sa.Column('id', sa.BigInteger,
+                                   primary_key=True, autoincrement=False),
+                         sa.Column('name', sa.String),
+                         sa.Column('intnames', JSONB),
+                         sa.Column('ref', sa.String),
+                         sa.Column('itinerary', JSONB),
+                         sa.Column('symbol', sa.String),
+                         sa.Column('country', sa.String),
+                         sa.Column('network', sa.String),
+                         sa.Column('level', sa.SmallInteger),
+                         sa.Column('top', sa.Boolean),
+                         sa.Column('geom', Geometry('GEOMETRY', srid=ways.srid)))
 
         super().__init__(table, relations.change)
 
@@ -219,6 +216,7 @@ class Routes(ThreadableDBObject, TableSource):
 
     def _construct_row(self, obj, conn):
         tags = TagStore(obj['tags'])
+        is_node_network = tags.get('network:type') == 'node_network'
 
         outtags = RouteRow(
             id=obj['id'],
@@ -231,16 +229,16 @@ class Routes(ThreadableDBObject, TableSource):
         if 'symbol' in tags:
             outtags.intnames['symbol'] = tags['symbol']
 
-        if tags.get('network:type') == 'node_network':
+        if is_node_network:
             outtags.level = Network.LOC.min()
         elif 'network' in tags:
             outtags.level = self._compute_route_level(tags['network'])
 
         # child relations
-        relids = [ r['id'] for r in obj['members'] if r['type'] == 'R']
-
         members = obj['members']
-        if len(relids) > 0:
+        relids = [r['id'] for r in members if r['type'] == 'R']
+
+        if relids:
             # Is this relation part of a cycle? Then drop the relation members
             # to not get us in trouble with geometry building.
             h1 = self.rtree.data.alias()
@@ -250,7 +248,7 @@ class Routes(ThreadableDBObject, TableSource):
                     .where(h1.c.child == h2.c.parent)\
                     .where(h2.c.child == obj['id'])
             if (self.thread.conn.execute(sql).rowcount > 0):
-                members = [ m for m in obj['members'] if m['type'] == 'W' ]
+                members = [m for m in obj['members'] if m['type'] == 'W']
                 relids = []
 
         # geometry
@@ -271,7 +269,7 @@ class Routes(ThreadableDBObject, TableSource):
         geom = from_shape(geom, srid=self.data.c.geom.type.srid)
 
         # find the country
-        if len(relids) > 0:
+        if relids:
             sel = sa.select([self.c.country], distinct=True)\
                     .where(self.c.id.in_(relids))
         else:
@@ -302,11 +300,10 @@ class Routes(ThreadableDBObject, TableSource):
         if self.config.tag_filter is not None:
             self.config.tag_filter(outtags, tags)
 
-        if outtags.network is None:
-            if tags.get('network:type') == 'node_network':
-                outtags.network = 'NDS'
+        if outtags.network is None and is_node_network:
+            outtags.network = 'NDS'
 
-        if 'network' in tags and tags.get('network:type') != 'node_network':
+        if 'network' in tags and not is_node_network:
             h = self.rtree.data
             r = self.rels.data
             sel = sa.select([sa.text("'a'")])\
