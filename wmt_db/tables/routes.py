@@ -106,33 +106,13 @@ class Routes(ThreadableDBObject, TableSource):
 
 
     def construct(self, engine):
-        h = self.rtree.data
         idx = sa.Index(self.data.name + '_iname_idx', sa.func.upper(self.data.c.name))
 
         with engine.begin() as conn:
             conn.execute(DropIndexIfExists(idx))
             self.truncate(conn)
 
-            max_depth = conn.scalar(sa.select([saf.max(h.c.depth)]))
-
-        subtab = sa.select([h.c.child, saf.max(h.c.depth).label("lvl")])\
-                   .group_by(h.c.child).alias()
-
-        # Process relations by hierarchy, starting with the highest depth.
-        # This guarantees that the geometry of member relations is already
-        # available for processing the relation geometry.
-        if max_depth is not None:
-            for level in range(max_depth, 1, -1):
-                subset = self.rels.data.select()\
-                          .where(subtab.c.lvl == level)\
-                          .where(self.rels.c.id == subtab.c.child)
-                self.insert_objects(engine, subset)
-
-        # Lastly, process all routes that are nobody's child.
-        subset = self.rels.data.select()\
-                 .where(self.rels.c.id.notin_(
-                     sa.select([h.c.child], distinct=True).as_scalar()))
-        self.insert_objects(engine, subset)
+        self._insert_objects(engine)
 
         with engine.begin() as conn:
             idx.create(conn)
