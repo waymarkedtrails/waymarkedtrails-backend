@@ -69,11 +69,11 @@ class TestPisteTable:
         mapdb.construct()
 
         mapdb.table_equals('test',
-            [dict(id=1, name=None),
-             dict(id=2, name='A'),
-             dict(id=3, name='[A]'),
-             dict(id=4, name='Zzz'),
-             dict(id=5, name='[3]'),
+            [dict(id=1, name=None, ref=None),
+             dict(id=2, name='A', ref=None),
+             dict(id=3, name=None, ref='A'),
+             dict(id=4, name='Zzz', ref='45'),
+             dict(id=5, name=None, ref='3'),
             ])
 
     def test_simple_update(self, mapdb, tags, members):
@@ -96,4 +96,4 @@ class TestPisteTable:
 
         mapdb.table_equals('test',
             [dict(id=1, name='FastSki'),
-             dict(id=3, name='[23]')])
+             dict(id=3, name=None, ref='23')])

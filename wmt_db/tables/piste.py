@@ -24,11 +24,12 @@ from shapely.ops import linemerge
 
 def _add_piste_columns(table, name):
     table.append_column(sa.Column('name', sa.String))
+    table.append_column(sa.Column('ref', sa.String))
     table.append_column(sa.Column('intnames', JSONB))
     table.append_column(sa.Column('symbol', sa.String))
     table.append_column(sa.Column('difficulty', sa.SmallInteger))
     table.append_column(sa.Column('piste', sa.SmallInteger))
-    table.append_column(sa.Index('idx_%s_iname' % name, sa.text('upper(name)')))
+    table.append_column(sa.Index(f'idx_{name}_iname', sa.text('upper(name)')))
 
 def write_symbol(factory, tags, difficulty, datadir):
     sym = factory.create(tags, '', difficulty=difficulty)
@@ -40,35 +41,17 @@ def write_symbol(factory, tags, difficulty, datadir):
     return symname
 
 
-def basic_tag_transform(osmid, tags, config):
-    outtags = { 'intnames' : {} }
-
-    # determine name
-    if 'piste:name' in tags:
-        outtags['name'] = tags['piste:name']
-    elif 'piste:ref' in tags:
-        outtags['name'] = '[%s]' % tags['piste:ref']
-    elif 'name' in tags:
-        outtags['name'] = tags['name']
-    elif 'ref' in tags:
-        outtags['name'] = '[%s]' % tags['ref']
-    else:
-        # the default used to be to use the osmid.
-        # We now expect the renderer to deal with that.
-        outtags['name'] = None
-
-    # also find name translations
-    for (k,v) in tags.items():
-        if k.startswith('name:'):
-            outtags['intnames'][k[5:]] = v
-
-    # determine kind of sports activity
+def basic_tag_transform(tags: TagStore, config):
     difficulty = tags.get('piste:difficulty')
     difficulty = config.difficulty_map.get(difficulty, 0)
-    outtags['difficulty'] = difficulty
-    outtags['piste'] = config.piste_type.get(tags.get('piste:type'), 0)
 
-    return outtags, difficulty
+    return dict(
+        intnames=tags.get_prefixed('name:'),
+        name=tags.firstof('piste:name', 'name'),
+        ref=tags.firstof('piste:ref', 'ref'),
+        difficulty=difficulty,
+        piste=config.piste_type.get(tags.get('piste:type'), 0)
+    )
 
 
 class PisteRoutes(ThreadableDBObject, TableSource):
@@ -202,7 +185,7 @@ class PisteRoutes(ThreadableDBObject, TableSource):
     def _construct_row(self, obj, conn):
         tags = TagStore(obj['tags'])
 
-        outtags, difficulty = basic_tag_transform(obj['id'], tags, self.config)
+        outtags = basic_tag_transform(tags, self.config)
 
         # we don't support hierarchy at the moment
         outtags['top']  = True
@@ -223,7 +206,8 @@ class PisteRoutes(ThreadableDBObject, TableSource):
                 geom = fixed_geom
 
         outtags['geom'] = from_shape(geom, srid=self.c.geom.type.srid)
-        outtags['symbol'] = write_symbol(self.shield_fab, tags, difficulty,
+        outtags['symbol'] = write_symbol(self.shield_fab, tags,
+                                         outtags['difficulty'],
                                          self.config.symbol_datadir)
         outtags['id'] = obj['id']
 
@@ -256,8 +240,9 @@ class PisteWayInfo(PlainWayTable):
     def transform_tags(self, obj):
         tags = TagStore(obj['tags'])
 
-        outtags, difficulty = basic_tag_transform(obj['id'], tags, self.config)
-        outtags['symbol'] = write_symbol(self.shield_fab, tags, difficulty,
+        outtags = basic_tag_transform(tags, self.config)
+        outtags['symbol'] = write_symbol(self.shield_fab, tags,
+                                         outtags['difficulty'],
                                          self.config.symbol_datadir)
 
         return outtags

@@ -43,8 +43,6 @@ class RouteRow(dict):
             self[attr] = None
 
         self['id'] = id_
-        self['intnames'] = {}
-        self['level'] = Network.LOC()
 
     def __getattr__(self, name):
         return self[name]
@@ -231,18 +229,19 @@ class Routes(ThreadableDBObject, TableSource):
         outtags = RouteRow(obj['id'])
 
         # determine name and level
-        for k, v in tags.items():
-            if k in ('name', 'ref'):
-                outtags[k] = v
-            elif k.startswith('name:'):
-                outtags.intnames[k[5:]] = v
-            elif k == 'network':
-                outtags.level = self._compute_route_level(v)
-            elif k == 'symbol':
-                outtags.intnames['symbol'] = v
+        outtags.name = tags.get('name')
+        outtags.ref = tags.get('ref')
+        outtags.intnames = tags.get_prefixed('name:')
+
+        if 'symbol' in tags:
+            outtags.intnames['symbol'] = tags['symbol']
 
         if tags.get('network:type') == 'node_network':
             outtags.level = Network.LOC.min()
+        elif 'network' in tags:
+            outtags.level = self._compute_route_level(tags['network'])
+        else:
+            outtags.level = Network.LOC()
 
         outtags.itinerary = self._make_itinerary(tags)
 
