@@ -1,22 +1,12 @@
+# SPDX-License-Identifier: GPL-3.0-only
+#
 # This file is part of Waymarked Trails
-# Copyright (C) 2018 Sarah Hoffmann
-#
-# This is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
-# of the License, or any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+# Copyright (C) 2020 Sarah Hoffmann
 
 import logging
 import os
+import dataclasses
+from typing import Dict, List, Union
 
 from osgende.common.table import TableSource
 from osgende.common.sqlalchemy import DropIndexIfExists, CreateTableAs
@@ -35,22 +25,42 @@ from geoalchemy2.shape import from_shape
 
 log = logging.getLogger(__name__)
 
-class RouteRow(dict):
-    fields = set(('id', 'intnames', 'name', 'level', 'ref', 'itinerary', 'network', 'top', 'geom', 'symbol', 'country'))
+@dataclasses.dataclass
+class RouteRow:
+    id: int
+    name: Union[None, str]
+    intnames: Union[None, Dict[str, str]]
+    ref: Union[None, str]
+    itinerary: Union[None, List[str]]
+    symbol: str = ''
+    country: Union[None, str] = None
+    network: Union[None, str] = None
+    level: int = Network.LOC()
+    top: bool = True
 
-    def __init__(self, id_):
-        for attr in self.fields:
-            self[attr] = None
 
-        self['id'] = id_
+def _make_itinerary(tags):
+    """ Create an itinerary from 'to', 'from' and 'via' tags.
+    """
+    ret = []
 
-    def __getattr__(self, name):
-        return self[name]
+    frm = tags.get('from')
+    if frm is not None:
+        ret.append(frm)
 
-    def __setattr__(self, name, value):
-        if name not in self.fields:
-            raise ValueError("Bad field " + name)
-        self[name] = value
+    via = tags.get('via')
+    if via is not None:
+        if ';' in via:
+            ret.extend(via.split(';'))
+        else:
+            ret.extend(via.split(' - '))
+
+    to = tags.get('to')
+    if to is not None:
+        ret.append(to)
+
+    return ret if ret else None
+
 
 
 class Routes(ThreadableDBObject, TableSource):
@@ -68,8 +78,8 @@ class Routes(ThreadableDBObject, TableSource):
                         sa.Column('ref', sa.String),
                         sa.Column('itinerary', JSONB),
                         sa.Column('symbol', sa.String),
-                        sa.Column('country', sa.String(length=3)),
-                        sa.Column('network', sa.String(length=3)),
+                        sa.Column('country', sa.String),
+                        sa.Column('network', sa.String),
                         sa.Column('level', sa.SmallInteger),
                         sa.Column('top', sa.Boolean),
                         sa.Column('geom', Geometry('GEOMETRY', srid=ways.srid)))
@@ -198,40 +208,25 @@ class Routes(ThreadableDBObject, TableSource):
         cols = self._construct_row(obj, self.thread.conn)
 
         if cols is not None:
-            self.thread.conn.execute(self.upsert_data().values(cols))
+            print(cols)
+            print([(k, type(v)) for k, v in cols.items()])
+            sql = self.upsert_data().values(cols)
+            self.thread.conn.execute(sql)
         else:
             self.thread.conn.execute(self.data.delete().where(self.c.id == obj['id']))
 
 
-    def _make_itinerary(self, tags):
-        ret = []
-
-        frm = tags.get('from')
-        if frm is not None:
-            ret.append(frm)
-
-        via = tags.get('via')
-        if via is not None:
-            if ';' in via:
-                ret.extend(via.split(';'))
-            else:
-                ret.extend(via.split(' - '))
-
-        to = tags.get('to')
-        if to is not None:
-            ret.append(to)
-
-        return ret if ret else None
-
 
     def _construct_row(self, obj, conn):
         tags = TagStore(obj['tags'])
-        outtags = RouteRow(obj['id'])
 
-        # determine name and level
-        outtags.name = tags.get('name')
-        outtags.ref = tags.get('ref')
-        outtags.intnames = tags.get_prefixed('name:')
+        outtags = RouteRow(
+            id=obj['id'],
+            name=tags.get('name'),
+            ref=tags.get('ref'),
+            intnames=tags.get_prefixed('name:'),
+            itinerary=_make_itinerary(tags)
+        )
 
         if 'symbol' in tags:
             outtags.intnames['symbol'] = tags['symbol']
@@ -240,10 +235,6 @@ class Routes(ThreadableDBObject, TableSource):
             outtags.level = Network.LOC.min()
         elif 'network' in tags:
             outtags.level = self._compute_route_level(tags['network'])
-        else:
-            outtags.level = Network.LOC()
-
-        outtags.itinerary = self._make_itinerary(tags)
 
         # child relations
         relids = [ r['id'] for r in obj['members'] if r['type'] == 'R']
@@ -277,7 +268,7 @@ class Routes(ThreadableDBObject, TableSource):
             if fixed_geom.geom_type == 'LineString':
                 geom = fixed_geom
 
-        outtags.geom = from_shape(geom, srid=self.data.c.geom.type.srid)
+        geom = from_shape(geom, srid=self.data.c.geom.type.srid)
 
         # find the country
         if len(relids) > 0:
@@ -286,7 +277,7 @@ class Routes(ThreadableDBObject, TableSource):
         else:
             c = self.countries
             sel = sa.select([c.column_cc()], distinct=True)\
-                    .where(c.column_geom().ST_Intersects(outtags.geom))
+                    .where(c.column_geom().ST_Intersects(geom))
 
         cur = self.thread.conn.execute(sel)
 
@@ -315,20 +306,21 @@ class Routes(ThreadableDBObject, TableSource):
             if tags.get('network:type') == 'node_network':
                 outtags.network = 'NDS'
 
-        if outtags.top is None:
-            if 'network' in tags and tags.get('network:type') != 'node_network':
-                h = self.rtree.data
-                r = self.rels.data
-                sel = sa.select([sa.text("'a'")]).where(h.c.child == obj['id'])\
-                                         .where(r.c.id == h.c.parent)\
-                                         .where(h.c.depth == 2)\
-                                         .where(r.c.tags['network'].astext == tags['network'])\
-                                         .limit(1)
+        if 'network' in tags and tags.get('network:type') != 'node_network':
+            h = self.rtree.data
+            r = self.rels.data
+            sel = sa.select([sa.text("'a'")])\
+                    .where(h.c.child == obj['id'])\
+                    .where(r.c.id == h.c.parent)\
+                    .where(h.c.depth == 2)\
+                    .where(r.c.tags['network'].astext == tags['network'])\
+                    .limit(1)
 
-                top = self.thread.conn.scalar(sel)
+            top = self.thread.conn.scalar(sel)
 
-                outtags.top = (top is None)
-            else:
-                outtags.top = True
+            outtags.top = (top is None)
+
+        outtags = dataclasses.asdict(outtags)
+        outtags['geom'] = geom
 
         return outtags
