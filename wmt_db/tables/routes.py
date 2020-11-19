@@ -7,20 +7,18 @@ import os
 import dataclasses
 from typing import Dict, List, Union
 
-from shapely.ops import linemerge
 import sqlalchemy as sa
 from sqlalchemy.sql import functions as saf
 from sqlalchemy.dialects.postgresql import JSONB
 from geoalchemy2 import Geometry
-from geoalchemy2.shape import from_shape
 
 from osgende.common.table import TableSource
 from osgende.common.sqlalchemy import DropIndexIfExists, CreateTableAs
 from osgende.common.threads import ThreadableDBObject
 from osgende.common.tags import TagStore
-from osgende.common.build_geometry import build_route_geometry
 
 from ..common.route_types import Network
+from ..common.data_transforms import make_itinerary, make_geometry
 
 @dataclasses.dataclass
 class RouteRow:
@@ -29,35 +27,11 @@ class RouteRow:
     intnames: Union[None, Dict[str, str]]
     ref: Union[None, str]
     itinerary: Union[None, List[str]]
-    symbol: str = ''
+    symbol: Union[None, str] = None
     country: Union[None, str] = None
     network: Union[None, str] = None
     level: int = Network.LOC()
     top: bool = True
-
-
-def _make_itinerary(tags):
-    """ Create an itinerary from 'to', 'from' and 'via' tags.
-    """
-    ret = []
-
-    frm = tags.get('from')
-    if frm is not None:
-        ret.append(frm)
-
-    via = tags.get('via')
-    if via is not None:
-        if ';' in via:
-            ret.extend(via.split(';'))
-        else:
-            ret.extend(via.split(' - '))
-
-    to = tags.get('to')
-    if to is not None:
-        ret.append(to)
-
-    return ret if ret else None
-
 
 
 class Routes(ThreadableDBObject, TableSource):
@@ -212,6 +186,26 @@ class Routes(ThreadableDBObject, TableSource):
         else:
             self.thread.conn.execute(self.data.delete().where(self.c.id == obj['id']))
 
+    def _filter_members(self, oid, members):
+        """ Extract relation members and checks and breaks relation
+            member cycles.
+        """
+        relids = [r['id'] for r in members if r['type'] == 'R']
+
+        if relids:
+            # Is this relation part of a cycle? Then drop the relation members
+            # to not get us in trouble with geometry building.
+            h1 = self.rtree.data.alias()
+            h2 = self.rtree.data.alias()
+            sql = sa.select([h1.c.parent])\
+                    .where(h1.c.parent == oid)\
+                    .where(h1.c.child == h2.c.parent)\
+                    .where(h2.c.child == oid)
+            if (self.thread.conn.execute(sql).rowcount > 0):
+                members = [m for m in members if m['type'] == 'W']
+                relids = []
+
+        return members, relids
 
 
     def _construct_row(self, obj, conn):
@@ -223,7 +217,7 @@ class Routes(ThreadableDBObject, TableSource):
             name=tags.get('name'),
             ref=tags.get('ref'),
             intnames=tags.get_prefixed('name:'),
-            itinerary=_make_itinerary(tags)
+            itinerary=make_itinerary(tags)
         )
 
         if 'symbol' in tags:
@@ -235,38 +229,13 @@ class Routes(ThreadableDBObject, TableSource):
             outtags.level = self._compute_route_level(tags['network'])
 
         # child relations
-        members = obj['members']
-        relids = [r['id'] for r in members if r['type'] == 'R']
-
-        if relids:
-            # Is this relation part of a cycle? Then drop the relation members
-            # to not get us in trouble with geometry building.
-            h1 = self.rtree.data.alias()
-            h2 = self.rtree.data.alias()
-            sql = sa.select([h1.c.parent])\
-                    .where(h1.c.parent == obj['id'])\
-                    .where(h1.c.child == h2.c.parent)\
-                    .where(h2.c.child == obj['id'])
-            if (self.thread.conn.execute(sql).rowcount > 0):
-                members = [m for m in obj['members'] if m['type'] == 'W']
-                relids = []
+        members, relids = self._filter_members(obj['id'], obj['members'])
 
         # geometry
-        geom = build_route_geometry(conn, members, self.ways, self.data)
+        geom = make_geometry(conn, members, self.ways, self.data)
 
         if geom is None:
             return None
-
-        if geom.geom_type not in ('MultiLineString', 'LineString'):
-            raise RuntimeError("Bad geometry %s for %d" % (geom.geom_type, obj['id']))
-
-        # if the route is unsorted but linear, sort it
-        if geom.geom_type == 'MultiLineString':
-            fixed_geom = linemerge(geom)
-            if fixed_geom.geom_type == 'LineString':
-                geom = fixed_geom
-
-        geom = from_shape(geom, srid=self.data.c.geom.type.srid)
 
         # find the country
         if relids:

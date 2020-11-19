@@ -12,7 +12,6 @@ from osgende.common.table import TableSource
 from osgende.common.sqlalchemy import DropIndexIfExists, CreateTableAs
 from osgende.common.threads import ThreadableDBObject
 from osgende.common.tags import TagStore
-from osgende.common.build_geometry import build_route_geometry
 from osgende.lines import PlainWayTable
 
 import sqlalchemy as sa
@@ -21,6 +20,8 @@ from sqlalchemy.dialects.postgresql import JSONB
 from geoalchemy2 import Geometry
 from geoalchemy2.shape import to_shape, from_shape
 from shapely.ops import linemerge
+
+from ..common.data_transforms import make_geometry
 
 def _add_piste_columns(table, name):
     table.append_column(sa.Column('name', sa.String))
@@ -191,21 +192,12 @@ class PisteRoutes(ThreadableDBObject, TableSource):
         outtags['top']  = True
 
         # geometry
-        geom = build_route_geometry(conn, obj['members'], self.ways, self.data)
+        geom = make_geometry(conn, obj['members'], self.ways, self.data)
 
         if geom is None:
             return None
 
-        if geom.geom_type not in ('MultiLineString', 'LineString'):
-            raise RuntimeError("Bad geometry %s for %d" % (geom.geom_type, obj['id']))
-
-        # if the route is unsorted but linear, sort it
-        if geom.geom_type == 'MultiLineString':
-            fixed_geom = linemerge(geom)
-            if fixed_geom.geom_type == 'LineString':
-                geom = fixed_geom
-
-        outtags['geom'] = from_shape(geom, srid=self.c.geom.type.srid)
+        outtags['geom'] = geom
         outtags['symbol'] = write_symbol(self.shield_fab, tags,
                                          outtags['difficulty'],
                                          self.config.symbol_datadir)

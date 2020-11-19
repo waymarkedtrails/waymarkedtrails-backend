@@ -96,6 +96,38 @@ class TestRoutesTable:
              dict(id=4, level=Network.NAT())
             ])
 
+    def test_itinerary(self, mapdb, tags, members):
+        mapdb.insert_into('src_rels')\
+            .line(100, tags=tags(), members=members)\
+            .line(101, tags=tags(to='France'), members=members)\
+            .line(102, tags={'from': 'Germany'}, members=members)\
+            .line(103, tags=tags(via='Canal'), members=members)\
+            .line(104, tags=tags(via='A;B'), members=members)\
+            .line(105, tags=tags(via='New-York - Rio - Tokyo'), members=members)\
+            .line(106, tags={'from': 'Amsterdam', 'to': 'London', 'via': 'Dover'},
+                  members=members)
+
+        mapdb.construct()
+
+        mapdb.table_equals('test',
+            [dict(id=101, itinerary=['France']),
+             dict(id=102, itinerary=['Germany']),
+             dict(id=103, itinerary=['Canal']),
+             dict(id=104, itinerary=['A', 'B']),
+             dict(id=105, itinerary=['New-York', 'Rio', 'Tokyo']),
+             dict(id=106, itinerary=['Amsterdam', 'Dover', 'London']),
+             dict(id=100, itinerary=None),
+            ])
+
+    def test_node_network(self, mapdb, tags, members):
+        mapdb.insert_into('src_rels')\
+            .line(1, tags={'network:type': 'node_network'}, members=members)
+
+        mapdb.construct()
+
+        mapdb.table_equals('test',
+            [dict(id=1, level=0, network='NDS', top=True)])
+
     def test_simple_update(self, mapdb, tags, members):
         mapdb.insert_into('src_rels')\
             .line(1, tags=tags(name='Old Route'), members=members)\
