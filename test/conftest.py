@@ -7,7 +7,11 @@ import os
 
 import pytest
 import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import ARRAY
+from geoalchemy2 import Geometry
+
 import osgende
+from osgende.common.table import TableSource
 
 from wmt_db.tables.countries import CountryGrid
 
@@ -118,6 +122,20 @@ def countries(mapdb):
         ]))
 
     return table
+
+@pytest.fixture
+def segment_table(mapdb):
+    table = mapdb.add_table('ways',
+                TableSource(sa.Table('ways', mapdb.metadata,
+                                     sa.Column('id', sa.BigInteger),
+                                     sa.Column('nodes', ARRAY(sa.BigInteger)),
+                                     sa.Column('rels', ARRAY(sa.BigInteger)),
+                                     sa.Column('geom', Geometry('LINESTRING', 4326))
+                                    ), change_table='way_changeset'))
+    table.srid = 4326
+
+    return table
+
 
 class MockShieldFactory:
 

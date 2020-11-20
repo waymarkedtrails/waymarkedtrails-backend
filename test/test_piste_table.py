@@ -40,21 +40,13 @@ class TestPisteTable:
         symbol_datadir = ''
 
     @pytest.fixture(autouse=True)
-    def init_tables(self, mapdb, countries, shields):
+    def init_tables(self, mapdb, segment_table, countries, shields):
         rels = mapdb.add_table('src_rels',
                    OsmSourceTables.create_relation_table(mapdb.metadata))
-        ways = mapdb.add_table('ways',
-                   TableSource(sa.Table('ways', mapdb.metadata,
-                                        sa.Column('id', sa.BigInteger),
-                                        sa.Column('nodes', ARRAY(sa.BigInteger)),
-                                        sa.Column('rels', ARRAY(sa.BigInteger)),
-                                        sa.Column('geom', Geometry('LINESTRING', 4326))
-                                       ), change_table='way_changeset'))
-        ways.srid = 4326
         hier = mapdb.add_table('hierarchy',
                    RelationHierarchy(mapdb.metadata, 'hierarchy', rels))
         mapdb.add_table('test',
-                   PisteRoutes(mapdb.metadata, rels, ways, hier,
+                   PisteRoutes(mapdb.metadata, rels, segment_table, hier,
                                countries, self.Config, shields))
         mapdb.create()
 

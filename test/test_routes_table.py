@@ -4,13 +4,9 @@
 # Copyright (C) 2020 Sarah Hoffmann
 
 import pytest
-import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import ARRAY
-from geoalchemy2 import Geometry
 
 from osgende.relations import RelationHierarchy
 from osgende.osmdata import OsmSourceTables
-from osgende.common.table import TableSource
 
 from wmt_db.tables.routes import Routes
 from wmt_db.common.route_types import Network
@@ -42,21 +38,13 @@ class TestRoutesTable:
 
 
     @pytest.fixture(autouse=True)
-    def init_tables(self, mapdb, countries, shields):
+    def init_tables(self, mapdb, segment_table, countries, shields):
         rels = mapdb.add_table('src_rels',
                    OsmSourceTables.create_relation_table(mapdb.metadata))
-        ways = mapdb.add_table('ways',
-                   TableSource(sa.Table('ways', mapdb.metadata,
-                                        sa.Column('id', sa.BigInteger),
-                                        sa.Column('nodes', ARRAY(sa.BigInteger)),
-                                        sa.Column('rels', ARRAY(sa.BigInteger)),
-                                        sa.Column('geom', Geometry('LINESTRING', 4326))
-                                       ), change_table='way_changeset'))
-        ways.srid = 4326
         hier = mapdb.add_table('hierarchy',
                    RelationHierarchy(mapdb.metadata, 'hierarchy', rels))
         mapdb.add_table('test',
-                   Routes(mapdb.metadata, rels, ways, hier,
+                   Routes(mapdb.metadata, rels, segment_table, hier,
                           countries, self.Config, shields))
         mapdb.create()
 
