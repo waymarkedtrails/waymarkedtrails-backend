@@ -131,7 +131,7 @@ class Routes(ThreadableDBObject, TableSource):
 
             conn.execute('DROP TABLE IF EXISTS __tmp_osgende_routes_updaterels')
             conn.execute(CreateTableAs('__tmp_osgende_routes_updaterels',
-                         sa.union(*sels), temporary=False))
+                                       sa.union(*sels), temporary=False))
             tmp_rels = sa.Table('__tmp_osgende_routes_updaterels',
                                 sa.MetaData(), autoload_with=conn)
 
@@ -181,11 +181,39 @@ class Routes(ThreadableDBObject, TableSource):
                     .where(h1.c.parent == oid)\
                     .where(h1.c.child == h2.c.parent)\
                     .where(h2.c.child == oid)
-            if (self.thread.conn.execute(sql).rowcount > 0):
+            if self.thread.conn.execute(sql).rowcount > 0:
                 members = [m for m in members if m['type'] == 'W']
                 relids = []
 
         return members, relids
+
+    def _write_symbol(self, tags, country, style):
+        sym = self.symbols.create(tags, country, style=style)
+        if sym is None:
+            return 'None'
+
+        uid = sym.uuid()
+        sym.to_file(os.path.join(self.config.symbol_datadir, f'{uid}.svg'),
+                    format='svg')
+
+        return uid
+
+    def _find_country(self, relids, geom):
+        if relids:
+            sel = sa.select([self.c.country], distinct=True)\
+                    .where(self.c.id.in_(relids))
+        else:
+            c = self.countries
+            sel = sa.select([c.column_cc()], distinct=True)\
+                    .where(c.column_geom().ST_Intersects(geom))
+
+        cur = self.thread.conn.execute(sel)
+
+        # should be counting when rowcount > 1
+        if cur.rowcount >= 1:
+            return cur.scalar()
+
+        return None
 
 
     def _construct_row(self, obj, conn):
@@ -218,32 +246,11 @@ class Routes(ThreadableDBObject, TableSource):
             return None
 
         # find the country
-        if relids:
-            sel = sa.select([self.c.country], distinct=True)\
-                    .where(self.c.id.in_(relids))
-        else:
-            c = self.countries
-            sel = sa.select([c.column_cc()], distinct=True)\
-                    .where(c.column_geom().ST_Intersects(geom))
+        outtags.country = self._find_country(relids, geom)
 
-        cur = self.thread.conn.execute(sel)
-
-        # should be counting when rowcount > 1
-        if cur.rowcount >= 1:
-            cntry = cur.scalar()
-        else:
-            cntry = None
-
-        outtags.country = cntry
-
-        sym = self.symbols.create(tags, cntry,
-                                  style=Network.from_int(outtags.level).name)
-        if sym is None:
-            outtags.symbol = 'None'
-        else:
-            outtags.symbol = sym.uuid()
-            sym.to_file(os.path.join(self.config.symbol_datadir,
-                                     outtags.symbol + '.svg'), format='svg')
+        # create the symbol
+        outtags.symbol = self._write_symbol(tags, outtags.country,
+                                            Network.from_int(outtags.level).name)
 
         # custom filter callback
         if self.config.tag_filter is not None:

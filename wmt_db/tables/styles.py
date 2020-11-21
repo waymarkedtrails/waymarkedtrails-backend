@@ -1,19 +1,7 @@
+# SPDX-License-Identifier: GPL-3.0-only
+#
 # This file is part of the Waymarked Trails Map Project
-# Copyright (C) 2018 Sarah Hoffmann
-#
-# This is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
-# of the License, or any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+# Copyright (C) 2018-2020 Sarah Hoffmann
 
 import sqlalchemy as sa
 from geoalchemy2 import Geometry
@@ -29,8 +17,8 @@ class StyleTable(ThreadableDBObject, TableSource):
         srid = segments.srid
 
         table = sa.Table(self.config.table_name, meta,
-                         sa.Column('id', sa.BigInteger
-                                   ,primary_key=True, autoincrement=False),
+                         sa.Column('id', sa.BigInteger,
+                                   primary_key=True, autoincrement=False),
                          sa.Column('geom', Geometry('LINESTRING', srid=srid)),
                          sa.Column('geom100', Geometry('LINESTRING', srid=srid))
                          )
@@ -90,8 +78,8 @@ class StyleTable(ThreadableDBObject, TableSource):
             workers_todo = []
             for obj in res:
                 # build cache in the main thread, so that workers only read
-                cache_todo.update([ x for x in obj['rels']
-                                        if x not in self.route_cache ])
+                cache_todo.update([x for x in obj['rels']
+                                   if x not in self.route_cache])
                 workers_todo.append(obj)
                 # We don't want an extra query for each relation, so collect
                 # a couple of todos.
@@ -118,7 +106,7 @@ class StyleTable(ThreadableDBObject, TableSource):
     def synchronize_rels(self, engine):
         # select ways with changed rels joined with data with geom not null
         sql = self._synchronise_sql([c for c in self.c
-                                        if c.name not in ('id', 'geom')])\
+                                     if c.name not in ('id', 'geom')])\
                 .where(self.ways.c.rels.op('&& ARRAY')(self.rels.select_add_modify()))\
                 .where(self.ways.c.id == self.c.id)\
                 .where(self.c.geom is not None)
@@ -149,25 +137,27 @@ class StyleTable(ThreadableDBObject, TableSource):
                                 .where(self.data.c.id == m.c.id)
         engine.execute(sql)
 
-    def _synchronise_sql(self, add_rows=[]):
+    def _synchronise_sql(self, add_rows=None):
         h = self.rtree
         m = self.ways
         parents = sa.select([h.c.parent])\
                       .where(h.c.child == sa.func.any(m.c.rels))\
                       .distinct().as_scalar()
 
-        return sa.select([m.c.id,
-                         (m.c.rels + sa.func.array(parents)).label('rels')]
-                         + add_rows)
+        rows = [m.c.id, (m.c.rels + sa.func.array(parents)).label('rels')]
+        if add_rows is not None:
+            rows.extend(add_rows)
+
+        return sa.select(rows)
 
 
     def _process_construct_next(self, obj):
-        cols = self._construct_row(obj, self.thread.conn)
+        cols = self._construct_row(obj)
         self.thread.conn.execute(self.upsert_data().values(cols))
 
 
     def _process_rel_segment(self, obj):
-        cols = self._construct_row(obj, self.thread.conn, extra_data=False)
+        cols = self._construct_row(obj, extra_data=False)
 
         for k, v in cols.items():
             if v is None:
@@ -181,17 +171,17 @@ class StyleTable(ThreadableDBObject, TableSource):
                 if set(v) != set(obj[k]):
                     break
             else:
-                 if v != obj[k]:
+                if v != obj[k]:
                     break
         else:
-             return
+            return
 
         self.thread.conn.execute(self.data.update().values(cols)
                                      .where(self.data.c.id == obj['id']))
         self.uptable.add(self.thread.conn, obj['geom100'])
 
 
-    def _construct_row(self, obj, conn, extra_data=True):
+    def _construct_row(self, obj, extra_data=True):
         seginfo = self.config.new_collector()
         for rel in obj['rels']:
             if rel not in self.route_cache:
@@ -201,12 +191,8 @@ class StyleTable(ThreadableDBObject, TableSource):
 
         outdata = self.config.to_columns(seginfo)
         if extra_data:
-            outdata['id']  = obj['id']
+            outdata['id'] = obj['id']
             outdata['geom'] = None
             outdata['geom100'] = None
 
         return outdata
-
-
-
-

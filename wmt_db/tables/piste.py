@@ -8,18 +8,16 @@
 
 import os
 
+import sqlalchemy as sa
+from sqlalchemy.sql import functions as saf
+from sqlalchemy.dialects.postgresql import JSONB
+from geoalchemy2 import Geometry
+
 from osgende.common.table import TableSource
 from osgende.common.sqlalchemy import DropIndexIfExists, CreateTableAs
 from osgende.common.threads import ThreadableDBObject
 from osgende.common.tags import TagStore
 from osgende.lines import PlainWayTable
-
-import sqlalchemy as sa
-from sqlalchemy.sql import functions as saf
-from sqlalchemy.dialects.postgresql import JSONB
-from geoalchemy2 import Geometry
-from geoalchemy2.shape import to_shape, from_shape
-from shapely.ops import linemerge
 
 from ..common.data_transforms import make_geometry
 
@@ -153,7 +151,7 @@ class PisteRoutes(ThreadableDBObject, TableSource):
 
             conn.execute('DROP TABLE IF EXISTS __tmp_osgende_routes_updaterels')
             conn.execute(CreateTableAs('__tmp_osgende_routes_updaterels',
-                         sa.union(*sels), temporary=False))
+                                       sa.union(*sels), temporary=False))
             tmp_rels = sa.Table('__tmp_osgende_routes_updaterels',
                                 sa.MetaData(), autoload_with=conn)
 
@@ -186,10 +184,10 @@ class PisteRoutes(ThreadableDBObject, TableSource):
     def _construct_row(self, obj, conn):
         tags = TagStore(obj['tags'])
 
-        outtags = basic_tag_transform(tags, self.config)
+        outtags = basic_tag_transform(TagStore(obj['tags']), self.config)
 
         # we don't support hierarchy at the moment
-        outtags['top']  = True
+        outtags['top'] = True
 
         # geometry
         geom = make_geometry(conn, obj['members'], self.ways, self.data)
