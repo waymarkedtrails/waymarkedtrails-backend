@@ -139,3 +139,22 @@ class TestRoutesTable:
             dict(id=100, name='New Route'),
             dict(id=2, name='1', ref=None)
             ])
+
+    def test_hierarchy(self, mapdb, tags, members):
+        mapdb.insert_into('src_rels')\
+            .line(1, tags=tags(name='sub'), members=members)\
+            .line(2, tags=tags(name='super'), members=(dict(id=1, role='', type='R'),))
+
+        mapdb.construct()
+
+        mapdb.table_equals('test', [
+            dict(id=1, name='sub', geom='LINESTRING(0 0, 0.1 0.1)'),
+            dict(id=2, name='super', geom='LINESTRING(0 0, 0.1 0.1)')
+            ])
+
+        mapdb.modify('src_rels')\
+            .modify(1, tags=tags(name='sub'), members=[])
+
+        mapdb.construct()
+
+        mapdb.table_equals('test', [])

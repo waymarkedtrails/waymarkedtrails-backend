@@ -20,7 +20,7 @@ from sqlalchemy.dialects.postgresql import ARRAY
 
 from ..common.route_types import Network
 
-class RouteNetworkStyle(object):
+class RouteNetworkStyle:
     table_name = 'network_style'
 
     def add_columns(self, table):
