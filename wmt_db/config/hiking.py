@@ -12,7 +12,7 @@ from wmt_shields.wmt_config import WmtConfig
 
 from .common import *
 
-cai_level = { 'T' : '1', 'E' : '2', 'EE' : '3' }
+CAI_LEVEL = {'T' : '1', 'E' : '2', 'EE' : '3'}
 
 def filter_route_tags(outtags, tags):
     """ Additional tag filtering specifically for hiking routes.
@@ -42,15 +42,15 @@ def filter_route_tags(outtags, tags):
         ot = tags.get('osmc:symbol', '')
         if ot.startswith('yellow:'):
             outtags.network = 'AL1'
-        if ot.startswith('red:'):
+        elif ot.startswith('red:'):
             outtags.network = 'AL2'
-        if ot.startswith('blue:'):
+        elif ot.startswith('blue:'):
             outtags.network = 'AL4'
 
     # Italian hiking network (see #266), also uses Swiss system
     if outtags.country == 'it' and network == 'lwn' \
-        and tags.get('osmc:symbol', '').startswith('red') and 'cai_scale' in tags:
-        outtags.network = 'AL' + cai_level.get(tags['cai_scale'], '4')
+       and tags.get('osmc:symbol', '').startswith('red') and 'cai_scale' in tags:
+        outtags.network = 'AL' + CAI_LEVEL.get(tags['cai_scale'], '4')
 
     # Fränkischer Albverein (around Nürnberg)
     #  too extensive regional network, so downgrade for later display
@@ -99,14 +99,14 @@ ROUTES.network_map = {
         'lwn': Network.LOC()
         }
 ROUTES.tag_filter = filter_route_tags
-ROUTES.symbols = ( '.image_symbol',
-                   '.swiss_mobile',
-                   '.jel_symbol',
-                   '.kct_symbol',
-                   '.cai_hiking_symbol',
-                   '.osmc_symbol',
-                   '.ref_color_symbol',
-                   '.ref_symbol')
+ROUTES.symbols = ('.image_symbol',
+                  '.swiss_mobile',
+                  '.jel_symbol',
+                  '.kct_symbol',
+                  '.cai_hiking_symbol',
+                  '.osmc_symbol',
+                  '.ref_color_symbol',
+                  '.ref_symbol')
 ROUTES.symbol_datadir = os.path.join(MEDIA_DIR, 'symbols/hiking')
 
 GUIDEPOSTS = GuidePostConfig()
@@ -120,16 +120,16 @@ SYMBOLS = WmtConfig()
 SYMBOLS.shield_path = os.path.join(os.path.abspath(MEDIA_DIR), 'shields')
 SYMBOLS.shield_names = {
     # with friendly permission of Vogelsberg Touristik
-    'vr_vb' :        {'operator':'Vogelsberger Höhenclub',
-                      'name':'Vulkanring Vogelsberg'},
+    'vr_vb' :        {'operator': 'Vogelsberger Höhenclub',
+                      'name': 'Vulkanring Vogelsberg'},
     # permission via Kulturverein Storndorf
-    'judenpfad_vb' : { 'name' : 'Judenpfad Vogelsberg' },
+    'judenpfad_vb' : {'name': 'Judenpfad Vogelsberg'},
     # permisson from Verkehrsverein Much
     'igel_much19' :  {'operator' : 'Verkehrsverein Much e.V.',
                       'name':'Familienwanderweg Much'},
     # permission from Stadtmarketing Eupen
-    'eupen' : { 'operator' : 'Stadt Eupen - Stadtmarketing',
-                'name' : 'Eupen rundum'},
+    'eupen' : {'operator': 'Stadt Eupen - Stadtmarketing',
+               'name': 'Eupen rundum'},
 }
 
 #############################################################################

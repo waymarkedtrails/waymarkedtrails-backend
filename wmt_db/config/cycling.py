@@ -29,13 +29,13 @@ ROUTES.network_map = {
         'rcn': Network.REG(0),
         'lcn': Network.LOC(0)
         }
-ROUTES.symbols = ( filters.tags_all('.color_box',
-                                  {'operator' : 'Norwich City Council',}),
-                   '.swiss_mobile',
-                   '.jel_symbol',
-                   '.ref_color_symbol',
-                   '.ref_symbol',
-                   '.color_box')
+ROUTES.symbols = (filters.tags_all('.color_box',
+                                   {'operator' : 'Norwich City Council',}),
+                  '.swiss_mobile',
+                  '.jel_symbol',
+                  '.ref_color_symbol',
+                  '.ref_symbol',
+                  '.color_box')
 ROUTES.symbol_datadir = os.path.join(MEDIA_DIR, 'symbols/cycling')
 
 GUIDEPOSTS = GuidePostConfig()

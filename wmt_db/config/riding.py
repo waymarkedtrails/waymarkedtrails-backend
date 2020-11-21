@@ -34,9 +34,9 @@ ROUTES.network_map = {
         'lwn': Network.LOC(0),
         'lcn': Network.LOC(0),
         }
-ROUTES.symbols = ( '.osmc_symbol',
-                   '.ref_symbol',
-                   '.color_box')
+ROUTES.symbols = ('.osmc_symbol',
+                  '.ref_symbol',
+                  '.color_box')
 ROUTES.symbol_datadir = os.path.join(MEDIA_DIR, 'symbols/riding')
 
 GUIDEPOSTS = GuidePostConfig()

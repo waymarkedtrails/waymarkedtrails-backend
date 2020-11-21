@@ -28,9 +28,9 @@ ROUTES.network_map = {
         'rin': Network.REG(0),
         'local': Network.LOC(0)
         }
-ROUTES.symbols = ( '.swiss_mobile',
-                   '.ref_symbol',
-                   '.color_box')
+ROUTES.symbols = ('.swiss_mobile',
+                  '.ref_symbol',
+                  '.color_box')
 ROUTES.symbol_datadir = os.path.join(MEDIA_DIR, 'symbols/skating')
 
 GUIDEPOSTS = GuidePostConfig()

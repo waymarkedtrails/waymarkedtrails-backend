@@ -15,8 +15,8 @@ DB_PASSWORD = None
 DB_RO_USER = 'www-data'
 DB_NODESTORE = None
 
-REPLICATION_URL='https://planet.openstreetmap.org/replication/minute/'
-REPLICATION_SIZE=50
+REPLICATION_URL = 'https://planet.openstreetmap.org/replication/minute/'
+REPLICATION_SIZE = 50
 
 
 #############################################################################
@@ -68,24 +68,20 @@ class PisteTableConfig(object):
     table_name = 'routes'
     symbols = None
 
-    difficulty_map = {'novice'       : 1,
-                      'easy'         : 2,
-                      'intermediate' : 3,
-                      'advanced'     : 4,
-                      'expert'       : 5,
-                      'extreme'      : 6,
-                      'freeride'     : 10,
-                      # unknown value: 0
-                     }
+    difficulty_map = dict(novice=1,
+                          easy=2,
+                          intermediate=3,
+                          advanced=4,
+                          expert=5,
+                          extreme=6,
+                          freeride=10)
 
-    piste_type = {'downhill'      : 1,
-                  'nordic'        : 2,
-                  'skitour'       : 3,
-                  'sled'          : 4,
-                  'hike'          : 5,
-                  'sleigh'        : 6,
-                  # unknown value : 0
-                 }
+    piste_type = dict(downhill=1,
+                      nordic=2,
+                      skitour=3,
+                      sled=4,
+                      hike=5,
+                      sleigh=6)
 
 
 #############################################################################
@@ -97,24 +93,15 @@ try:
 except ImportError:
     pass # no local settings provided
 
-
 #############################################################################
 #
 # Basic render settings
 
 if globals().get('TILE_CACHE') is None:
-    TILE_CACHE = {
-        'type' : "PostgresCache",
-        'empty_tile' : { 'png' : op.join(MEDIA_DIR, 'symbols/misc/empty.png') },
-        'dba' : 'dbname=tiles',
-        'max_zoom' : 15
-    }
+    TILE_CACHE = dict(type='PostgresCache',
+                      empty_tile={'png': op.join(MEDIA_DIR, 'symbols/misc/empty.png')},
+                      dba='dbname=tiles',
+                      max_zoom=15)
 
 if globals().get('RENDERER') is None:
-    RENDERER = {
-        'source_type' : 'xml',
-        'tile_size' : (256, 256),
-        'max_zoom' : 18
-    }
-
-
+    RENDERER = dict(source_type='xml', tile_size=(256, 256), max_zoom=18)
