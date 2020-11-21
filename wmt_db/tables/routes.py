@@ -159,8 +159,6 @@ class Routes(ThreadableDBObject, TableSource):
         cols = self._construct_row(obj, self.thread.conn)
 
         if cols is not None:
-            print(cols)
-            print([(k, type(v)) for k, v in cols.items()])
             sql = self.upsert_data().values(cols)
             self.thread.conn.execute(sql)
         else:
