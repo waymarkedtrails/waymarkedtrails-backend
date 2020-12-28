@@ -50,9 +50,9 @@ class TestGuidepostTableNoSubtype:
         mapdb.construct()
 
         mapdb.table_equals('test',
-            [dict(id=1, name='X43', ele='34', geom='POINT(12 34)'),
-             dict(id=2, name=None, ele='45.3', geom='POINT(0.1 -0.3)'),
-             dict(id=3, name=None, ele='3029', geom='POINT(128 10.4)'),
+            [dict(id=1, name='X43', ele=34.0, geom='POINT(12 34)'),
+             dict(id=2, name=None, ele=13.80744, geom='POINT(0.1 -0.3)'),
+             dict(id=3, name=None, ele=3029, geom='POINT(128 10.4)'),
              dict(id=4, name=None, ele=None, geom='POINT(1 1)')
             ])
 

@@ -13,8 +13,6 @@ from geoalchemy2 import Geometry
 from osgende.generic import TransformedTable
 from osgende.common.tags import TagStore
 
-ELE_PATTERN = re_compile('[\\d.]+')
-
 class GuidePosts(TransformedTable):
     """ Information about guide posts. """
 
@@ -26,7 +24,7 @@ class GuidePosts(TransformedTable):
 
     def add_columns(self, table, src):
         table.append_column(sa.Column('name', sa.String))
-        table.append_column(sa.Column('ele', sa.String))
+        table.append_column(sa.Column('ele', sa.Float))
         table.append_column(sa.Column('geom', Geometry('POINT', srid=self.srid)))
 
     def set_update_table(self, table):
@@ -54,10 +52,7 @@ class GuidePosts(TransformedTable):
 
         outtags = dict(name=tags.get('name'), ele=None)
         if 'ele' in tags:
-            m = ELE_PATTERN.search(tags['ele'])
-            if m:
-                outtags['ele'] = m.group(0)
-            # XXX check for ft
+            outtags['ele'] = tags.get_length('ele', unit='m', default='m')
 
         if self.srid == self.src.c.geom.type.srid:
             outtags['geom'] = obj['geom']

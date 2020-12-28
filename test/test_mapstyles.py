@@ -33,12 +33,8 @@ def clear_db():
 def site_config(request):
     return getattr(wmt_db.config, request.param)
 
-def test_routedb(site_config):
-    db = create_mapdb(site_config, Options)
-    db.engine = sa.create_engine(URL('postgresql', database=Options.database))
-    with db.engine.begin() as conn:
-        conn.execute("CREATE EXTENSION postgis")
 
+def run_import(db):
     db.osmdata.node.data.create(bind=db.engine, checkfirst=True)
     db.osmdata.way.data.create(bind=db.engine, checkfirst=True)
     db.osmdata.relation.data.create(bind=db.engine, checkfirst=True)
@@ -50,6 +46,15 @@ def test_routedb(site_config):
     db.construct()
     db.dataview()
     db.update()
+
+
+def test_routedb(site_config):
+    db = create_mapdb(site_config, Options)
+    db.engine = sa.create_engine(URL('postgresql', database=Options.database))
+    with db.engine.begin() as conn:
+        conn.execute("CREATE EXTENSION postgis")
+
+    run_import(db)
 
     db.engine.dispose()
 
@@ -59,17 +64,7 @@ def test_pistedb():
     with db.engine.begin() as conn:
         conn.execute("CREATE EXTENSION postgis")
 
-    db.osmdata.node.data.create(bind=db.engine, checkfirst=True)
-    db.osmdata.way.data.create(bind=db.engine, checkfirst=True)
-    db.osmdata.relation.data.create(bind=db.engine, checkfirst=True)
-    db.osmdata.node.change.create(bind=db.engine, checkfirst=True)
-    db.osmdata.way.change.create(bind=db.engine, checkfirst=True)
-    db.osmdata.relation.change.create(bind=db.engine, checkfirst=True)
-
-    db.create()
-    db.construct()
-    db.dataview()
-    db.update()
+    run_import(db)
 
     db.engine.dispose()
 

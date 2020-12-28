@@ -84,7 +84,7 @@ def create_mapdb(site_config, options):
                                      db.tables.routes.shield_fab))
 
     cols = ('name', 'symbol', 'difficulty', 'piste')
-    db.add_table('joinded_ways',
+    db.add_table('joined_ways',
                  GroupedWayTable(db.metadata, tabname.joinedway, ways, cols))
 
     return db
