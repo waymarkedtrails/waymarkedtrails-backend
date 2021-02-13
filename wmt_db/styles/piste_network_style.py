@@ -1,19 +1,7 @@
+# SPDX-License-Identifier: GPL-3.0-only
+#
 # This file is part of the Waymarked Trails Map Project
-# Copyright (C) 2018 Sarah Hoffmann
-#
-# This is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
-# of the License, or any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+# Copyright (C) 2021 Sarah Hoffmann
 
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import ARRAY
@@ -29,6 +17,7 @@ class PisteNetworkStyle(object):
 
     def add_columns(self, table):
         table.append_column(sa.Column('symbol', ARRAY(sa.String)))
+        table.append_column(sa.Column('sources', ARRAY(sa.BigInteger)))
 
         for c in self.difficulty_map:
             table.append_column(sa.Column(c, sa.Boolean))
@@ -36,7 +25,7 @@ class PisteNetworkStyle(object):
             table.append_column(sa.Column(c, sa.Boolean))
 
     def new_collector(self):
-        coll = {'symbol' : []}
+        coll = dict(symbol=[], sources=[])
         for c in self.difficulty_map:
             coll[c] = False
         for c in self.piste_type:
@@ -45,9 +34,6 @@ class PisteNetworkStyle(object):
         return coll
 
     def add_to_collector(self, c, relinfo):
-        if not relinfo['top']:
-            return
-
         for k, v in self.difficulty_map.items():
             if relinfo['difficulty'] == v:
                 c[k] = True
@@ -57,6 +43,8 @@ class PisteNetworkStyle(object):
 
         if relinfo['symbol'] is not None and len(c['symbol']) < 5:
                 c['symbol'].append(relinfo['symbol'])
+
+        c['sources'].append(relinfo['id'])
 
     def to_columns(self, c):
         return c
