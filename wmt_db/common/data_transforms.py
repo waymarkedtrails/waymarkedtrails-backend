@@ -22,9 +22,11 @@ def make_itinerary(tags):
     via = tags.get('via')
     if via is not None:
         if ';' in via:
-            ret.extend(via.split(';'))
+            ret.extend([t.strip() for t in via.split(';')])
+        elif ' - ' in via:
+            ret.extend([t.strip() for t in via.split(' - ')])
         else:
-            ret.extend(via.split(' - '))
+            ret.extend([t.strip() for t in via.split(',')])
 
     to = tags.get('to')
     if to is not None:
