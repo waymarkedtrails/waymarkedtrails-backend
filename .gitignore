@@ -1,4 +1,3 @@
-config/local.py
 data/symbols/hiking/*
 data/symbols/cycling/*
 data/symbols/mtb/*
@@ -8,4 +7,4 @@ data/symbols/slopes/*
 __pycache__
 coverage.xml
 sonar-project.properties
-wmt_db/config/local.py
+wmt_local_config
