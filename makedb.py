@@ -11,6 +11,7 @@ from argparse import ArgumentParser, RawTextHelpFormatter
 from textwrap import dedent
 import os
 import sys
+import shutil
 import logging
 import importlib
 import sqlalchemy as sa
@@ -96,6 +97,14 @@ class MapStyleDb(object):
             raise
 
         self.mapdb = mapdb_pkg.create_mapdb(site_config, options)
+
+        # Create the symbol directory
+        if hasattr(site_config, 'ROUTES') and hasattr(site_config.ROUTES, 'symbol_datadir'):
+            if not site_config.ROUTES.symbol_datadir.exists():
+                site_config.ROUTES.symbol_datadir.mkdir()
+            if not (site_config.ROUTES.symbol_datadir / 'None.svg').exists():
+                shutil.copyfile(site_config.DATA_DIR / 'mapnik' / 'None.svg',
+                                site_config.ROUTES.symbol_datadir / 'None.svg')
 
     def construct(self):
         # make sure to delete traces of previous imports

@@ -1,9 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 #
 # This file is part of the Waymarked Trails Map Project
-# Copyright (C) 2020 Sarah Hoffmann
-
-import os
+# Copyright (C) 2021 Sarah Hoffmann
 
 from ..styles.route_network_style import RouteNetworkStyle
 from ..common.route_types import Network
@@ -36,7 +34,7 @@ ROUTES.symbols = (filters.tags_all('.color_box',
                   '.ref_color_symbol',
                   '.ref_symbol',
                   '.color_box')
-ROUTES.symbol_datadir = os.path.join(MEDIA_DIR, 'symbols/cycling')
+ROUTES.symbol_datadir = SYMBOL_DIR / 'cycling'
 
 GUIDEPOSTS = GuidePostConfig()
 GUIDEPOSTS.subtype = 'bicycle'

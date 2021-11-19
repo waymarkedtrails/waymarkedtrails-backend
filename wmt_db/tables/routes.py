@@ -3,7 +3,6 @@
 # This file is part of Waymarked Trails
 # Copyright (C) 2020 Sarah Hoffmann
 
-import os
 import dataclasses
 from typing import Dict, List, Union
 
@@ -191,8 +190,7 @@ class Routes(ThreadableDBObject, TableSource):
             return 'None'
 
         uid = sym.uuid()
-        sym.to_file(os.path.join(self.config.symbol_datadir, f'{uid}.svg'),
-                    format='svg')
+        sym.to_file(self.config.symbol_datadir / f'{uid}.svg', format='svg')
 
         return uid
 

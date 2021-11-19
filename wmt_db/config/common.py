@@ -7,7 +7,7 @@
 #
 # Database settings
 
-import os.path as op
+from pathlib import Path
 
 DB_NAME = 'planet'
 DB_USER = None
@@ -23,7 +23,8 @@ REPLICATION_SIZE = 50
 #
 # Common options for map styles
 
-MEDIA_DIR = 'data'
+SYMBOL_DIR = Path('symbols')
+DATA_DIR = (Path(__file__) / '..' / '..' / 'data').resolve()
 
 DB_SCHEMA = None
 DB_SRID = 3857
@@ -99,7 +100,7 @@ except ImportError:
 
 if globals().get('TILE_CACHE') is None:
     TILE_CACHE = dict(type='PostgresCache',
-                      empty_tile={'png': op.join(MEDIA_DIR, 'symbols/misc/empty.png')},
+                      empty_tile={'png': DATA_DIR / 'mapnik' / 'empty.png'},
                       dba='dbname=tiles',
                       max_zoom=15)
 

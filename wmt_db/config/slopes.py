@@ -1,9 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 #
 # This file is part of the Waymarked Trails Map Project
-# Copyright (C) 2020 Sarah Hoffmann
-
-import os
+# Copyright (C) 2021 Sarah Hoffmann
 
 from ..styles.piste_network_style import PisteNetworkStyle
 from wmt_shields.wmt_config import WmtConfig
@@ -30,7 +28,7 @@ DB_WAY_SUBSET = """
 
 ROUTES = PisteTableConfig()
 ROUTES.symbols = ('.slope_symbol', '.nordic_symbol')
-ROUTES.symbol_datadir = os.path.join(MEDIA_DIR, 'symbols/slopes')
+ROUTES.symbol_datadir = SYMBOL_DIR / 'slopes'
 
 DEFSTYLE = PisteNetworkStyle(ROUTES.difficulty_map, ROUTES.piste_type)
 

@@ -36,7 +36,7 @@ def write_symbol(factory, tags, difficulty, datadir):
         return 'None'
 
     symname = sym.uuid()
-    sym.to_file(os.path.join(datadir, symname + '.svg'), format='svg')
+    sym.to_file(datadir / f'{symname}.svg', format='svg')
     return symname
 
 

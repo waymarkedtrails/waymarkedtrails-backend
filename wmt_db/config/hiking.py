@@ -1,9 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 #
 # This file is part of the Waymarked Trails Map Project
-# Copyright (C) 2020 Sarah Hoffmann
-
-import os
+# Copyright (C) 2021 Sarah Hoffmann
 
 from types import MethodType
 from ..styles.route_network_style import RouteNetworkStyle
@@ -107,7 +105,7 @@ ROUTES.symbols = ('.image_symbol',
                   '.osmc_symbol',
                   '.ref_color_symbol',
                   '.ref_symbol')
-ROUTES.symbol_datadir = os.path.join(MEDIA_DIR, 'symbols/hiking')
+ROUTES.symbol_datadir = SYMBOL_DIR / 'hiking'
 
 GUIDEPOSTS = GuidePostConfig()
 GUIDEPOSTS.subtype = 'hiking'
@@ -117,7 +115,7 @@ NETWORKNODES.node_tag = 'rwn_ref'
 
 
 SYMBOLS = WmtConfig()
-SYMBOLS.shield_path = os.path.join(os.path.abspath(MEDIA_DIR), 'shields')
+SYMBOLS.shield_path = DATA_DIR / 'shields'
 SYMBOLS.shield_names = {
     # with friendly permission of Vogelsberg Touristik
     'vr_vb' :        {'operator': 'Vogelsberger Höhenclub',
