@@ -9,3 +9,15 @@
   {% endfor %}
 </Layer>
 {%- endmacro %}
+
+{% macro table(name, table, min=None, max=None, buffer=None, styles=[]) -%}
+<Layer name="{{name}}"{{ min | xmlarg("minimum-scale-denominator") }}{{ max | xmlarg("maximum-scale-denominator") }}{{ buffer | xmlarg("buffer-size") }}>
+  <Datasource base="wmtdb">
+    <Parameter name="table">{{ table }}</Parameter>
+  </Datasource>
+
+  {% for style in styles -%}
+  <StyleName>{{ style }}</StyleName>
+  {% endfor %}
+</Layer>
+{%- endmacro %}
