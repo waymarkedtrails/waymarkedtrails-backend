@@ -1,0 +1,10 @@
+{% set LWN = 3 %}
+{% set RWN = 10 %}
+{% set NWN = 17 %}
+{% set IWN = 24 %}
+{% set NWN_all = "between 14 and 20" %}
+{% set IWN_all = "between 21 and 28" %}
+{% set LWN_class = "class::bit(7)::integer" %}
+{% set RWN_class = "(class::bit(14) >> 7)::integer" %}
+{% set NWN_class = "(class::bit(21) >> 14)::integer" %}
+{% set IWN_class = "(class::bit(28) >> 21)::integer" %}

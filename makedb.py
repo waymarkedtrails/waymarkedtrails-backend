@@ -20,6 +20,16 @@ from osgende.common.status import StatusManager
 
 import wmt_db.config.common as config
 
+def _filter_xml_arg(arg, parameter_name):
+    """ Jinja filter that adds an optional XML argument of the form
+        parameter_name="arg". If arg is None, then nothing is added.
+    """
+    if arg is None:
+        return ''
+
+    return f' {parameter_name}="{arg}"'
+
+
 class BaseDb(object):
 
     def __init__(self, options):
@@ -138,6 +148,20 @@ class MapStyleDb(object):
     def mkshield(self):
         self.mapdb.mkshield()
 
+    def mapstyle(self):
+        import jinja2
+
+        template_dir = self.mapdb.site_config.DATA_DIR / 'map-styles'
+
+        env = jinja2.Environment(loader=jinja2.FileSystemLoader(str(template_dir)))
+        env.globals['cfg'] = self.mapdb.site_config
+        env.globals['table'] = { t: str(self.mapdb.tables[t].data)
+                                 for t in self.mapdb.tables._data }
+
+        env.filters['xmlarg'] = _filter_xml_arg
+
+        print(env.get_template(f'{self.mapdb.site_config.MAPTYPE}.xml.jinja').render())
+
     def _finalize(self, dovacuum):
         self.mapdb.status.set_status_from(self.mapdb.engine, self.mapname, 'base')
         self.mapdb.finalize(dovacuum)
@@ -191,7 +215,8 @@ if __name__ == "__main__":
                                      geometries (needed for tile creation)
                           update   - update all tables (from the *_changeset tables)
                                      (with db: update from given replication service)
-                          mkshield - force remaking of all shield bitmaps"""))
+                          mkshield - force remaking of all shield bitmaps
+                          mapstyle - dump the XML Mapnik rendering style to stdout"""))
 
     options = parser.parse_args()
 

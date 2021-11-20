@@ -41,9 +41,3 @@ DEFSTYLE = RouteNetworkStyle()
 SYMBOLS = WmtConfig()
 SYMBOLS.swiss_mobil_bgcolor = (0.88, 0.83, 0.32)
 SYMBOLS.swiss_mobil_networks = ('rcn', 'ncn')
-
-#############################################################################
-#
-# Render settings
-
-RENDERER['source'] = 'map-styles/mtbmap.xml'

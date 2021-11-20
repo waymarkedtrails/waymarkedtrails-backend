@@ -130,8 +130,4 @@ SYMBOLS.shield_names = {
                'name': 'Eupen rundum'},
 }
 
-#############################################################################
-#
-# Render settings
-
-RENDERER['source'] = 'map-styles/hikingmap.xml'
+RENDER_OPTIONS['swiss_style'] = True

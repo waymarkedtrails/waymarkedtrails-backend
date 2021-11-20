@@ -1,0 +1,105 @@
+<Style name="regionview-halo">
+  <Rule>
+    {{ style.line(color.REG_halo, width="4.0") }}
+  </Rule>
+</Style>
+
+{% call layer.query('RegionViewHalo', min=zoom.z13, max=zoom.z12,
+                    styles=['regionview-halo']) %}
+  SELECT geom FROM {{ table.style }} WHERE {{ level.LWN_class }} > 0
+{% endcall %}
+
+
+
+{% if cfg.RENDER_OPTIONS.swiss_style %}
+<Style name="regionview-swiss">
+  <Rule>
+    <Filter>[network] = "AL1"</Filter>
+    {{ style.line(color.SWISS_RED, width="1.7") }}
+  </Rule>
+  <Rule>
+    <Filter>[network] = "AL2"</Filter>
+    {{ style.line(color.SWISS_RED, width="2", dasharray="8,3") }}
+  </Rule>
+  <Rule>
+    <Filter>[network] = "AL3"</Filter>
+    {{ style.line(color.SWISS_RED, width="2", dasharray="4,3") }}
+  </Rule>
+  <Rule>
+    <Filter>[network] = "AL4"</Filter>
+    {{ style.line(color.SWISS_RED, width="2", dasharray="2,2") }}
+  </Rule>
+</Style>
+
+{% call layer.query('RegionViewSwissNetwork', min=zoom.z13, max=zoom.z12,
+                    styles=['regionview-swiss']) %}
+  SELECT network, geom FROM {{ table.routes }} WHERE network LIKE 'AL%'
+{% endcall %}
+{% endif %}
+
+
+
+{% if cfg.NETWORKNODES %}
+<Style name="regionview-nnw">
+  <Rule>
+    {{ style.line(color.NNW, width="1.4") }}
+  </Rule>
+</Style>
+
+{% call layer.query('RegionViewNodeNetwork', min=zoom.z13, max=zoom.z12,
+                    styles=['regionview-nnw']) %}
+  SELECT geom FROM {{ table.routes }} WHERE network = 'NDS'
+{% endcall %}
+{% endif %}
+
+
+<Style name="regionview-lwn">
+  <Rule>
+    <Filter>[lwn]</Filter>
+    {{ style.line(color.LOC, width="1.5") }}
+  </Rule>
+</Style>
+
+<Style name="regionview-iwn">
+  <Rule>
+    <Filter>[iwn] and [rwn] </Filter>
+    {{ style.line(color.INT, width="6.0") }}
+  </Rule>
+  <Rule>
+    <Filter>[iwn] and not [rwn] and not[nwn]</Filter>
+    {{ style.line(color.INT, width="5.0") }}
+  </Rule>
+  <Rule>
+    <Filter>[iwn] and [nwn]</Filter>
+    {{ style.line(color.INT_bg, width="7.0") }}
+  </Rule>
+</Style>
+
+<Style name="regionview-nwn">
+  <Rule>
+    <Filter>[nwn]</Filter>
+    {{ style.line(color.NAT, width="4.0") }}
+  </Rule>
+</Style>
+
+<Style name="regionview-rwn">
+  <Rule>
+    <Filter>[rwn] and not [nwn]</Filter>
+    {{ style.line(color.REG, width="3.0") }}
+  </Rule>
+  <Rule>
+    <Filter>[rwn] and [nwn]</Filter>
+    {{ style.line(color.REG, dasharray="1,7", width="3.0") }}
+  </Rule>
+</Style>
+
+{% call layer.query('RegionView', min=zoom.z13, max=zoom.z12,
+                    styles=['regionview-lwn', 'regionview-iwn',
+                            'regionview-nwn', 'regionsview-rwn']) %}
+  SELECT geom,
+       {{ layer.IWN_class }} > 0 as iwn,
+       {{ layer.NWN_class }} > 0 as nwn,
+       {{ layer.RWN_class }} > 0 as rwn,
+       {{ layer.LWN_class }} > 0 as lwn
+  FROM {{ table.style }} WHERE class != 0
+{% endcall %}

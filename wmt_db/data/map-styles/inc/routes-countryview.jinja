@@ -1,0 +1,75 @@
+{% if cfg.RENDER_OPTIONS.swiss_style %}
+<Style name="network-swiss-low">
+  <Rule>
+    {{ style.line(color.SWISS_RED, width="1.5") }}
+  </Rule>
+</Style>
+
+{% call layer.query('NetworkSwissLow', min=zoom.z12, max=zoom.z10,
+                    styles=["network-swiss-low"]) %}
+  SELECT geom FROM {{ table.routes }} WHERE network LIKE 'AL%'
+{% endcall %}
+{% endif %}
+
+
+{% if cfg.NETWORKNODES %}
+<Style name="network-node-low">
+  <Rule>
+    {{ style.line(color.NNW) }}
+  </Rule>
+</Style>
+
+{% call layer.query('NetworkNodeLow', min=zoom.z12, max=zoom.z11,
+                    styles=["network-node-low"]) %}
+  SELECT geom FROM {{ table.routes }} WHERE network = 'NDS'
+{% endcall %}
+{% endif %}
+
+
+
+<Style name="countryview-iwn">
+  <Rule>
+    <Filter>[iwn] and ([rwn] or [nwn])</Filter>
+    {{ style.line(color.INT, width="8.0") }}
+  </Rule>
+  <Rule>
+    <Filter>[iwn] and not [rwn] and not [nwn]</Filter>
+    {{ style.line(color.INT, width="5.0") }}
+  </Rule>
+</Style>
+
+<Style name="countryview-nwn">
+  <Rule>
+    <Filter>[nwn]</Filter>
+    {{ style.line(color.NAT, width="4.0") }}
+  </Rule>
+</Style>
+
+<Style name="countryview-rwn-lower">
+  <Rule>
+    <Filter>[rwn] &gt; 0 and [rwn] &lt; 8 and not [nwn]</Filter>
+    {{ style.line(color.REG) }}
+  </Rule>
+</Style>
+
+<Style name="rwn10">
+  <Rule>
+    <Filter>[rwn] &gt;= 8 and not [nwn]</Filter>
+    {{ style.line(color.REG, width="3.0") }}
+  </Rule>
+  <Rule>
+    <Filter>[rwn] &gt;= 8 and [nwn]</Filter>
+    {{ style.line(color.REG, dasharray="1,7", gamma="0.1", width="3.0") }}
+  </Rule>
+</Style>
+
+{% call layer.query('CountryView', min=zoom.z12, max=zoom.z10,
+                    styles=['countryview-iwn', 'countryview-rwn-lower',
+                            'countryview-nwn', 'countryview-rwn']) %}
+  SELECT geom100 as geom,
+         {{ level.IWN_class }} > 0 as iwn,
+         {{ level.NWN_class }} > 0 as nwn,
+         {{ level.RWN_class }} as rwn
+  FROM {{ table.style }}
+  WHERE (class::bit(28) >> 7)::integer > 0
+{% endcall %}

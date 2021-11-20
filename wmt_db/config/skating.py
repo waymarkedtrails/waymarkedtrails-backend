@@ -43,9 +43,3 @@ DEFSTYLE = RouteNetworkStyle()
 SYMBOLS = WmtConfig()
 SYMBOLS.swiss_mobil_bgcolor = (0.82, 0.63, 0.83)
 SYMBOLS.swiss_mobil_networks = ('national', 'regional')
-
-#############################################################################
-#
-# Render settings
-
-RENDERER['source'] = 'map-styles/skatingmap.xml'

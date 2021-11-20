@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 #
 # This file is part of the Waymarked Trails Map Project
-# Copyright (C) 2015-2020 Sarah Hoffmann
+# Copyright (C) 2015-2021 Sarah Hoffmann
 
 #############################################################################
 #
@@ -31,6 +31,8 @@ DB_SRID = 3857
 
 GUIDEPOSTS = None
 NETWORKNODES = None
+
+RENDER_OPTIONS = {}
 
 #############################################################################
 #
@@ -93,16 +95,3 @@ try:
     from wmt_local_config.backend import *
 except ImportError:
     pass # no local settings provided
-
-#############################################################################
-#
-# Basic render settings
-
-if globals().get('TILE_CACHE') is None:
-    TILE_CACHE = dict(type='PostgresCache',
-                      empty_tile={'png': DATA_DIR / 'mapnik' / 'empty.png'},
-                      dba='dbname=tiles',
-                      max_zoom=15)
-
-if globals().get('RENDERER') is None:
-    RENDERER = dict(source_type='xml', tile_size=(256, 256), max_zoom=18)

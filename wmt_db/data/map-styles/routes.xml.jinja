@@ -1,0 +1,15 @@
+{% import 'macros/colors.jinja' as color %}
+{% extends "base_map.xml.jinja" %}
+{% block content %}
+
+{% include "inc/routes-worldview.jinja" %}
+{% include "inc/routes-countryview.jinja" %}
+{% include "inc/routes-regionview.jinja" %}
+{% include "inc/routes-inr-shields.jinja" %}
+{% include "inc/routes-localview.jinja" %}
+
+{% for t in table -%}
+  {{ t }}: {{ table[t] }}
+{% endfor %}
+
+{% endblock %}

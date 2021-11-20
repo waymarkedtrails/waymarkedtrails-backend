@@ -36,9 +36,3 @@ SYMBOLS = WmtConfig()
 SYMBOLS.image_size = (20, 20)
 SYMBOLS.text_color = (1, 1, 1) # white
 SYMBOLS.text_bgcolor = (0, 0, 0) # black
-
-#############################################################################
-#
-# Render settings
-
-RENDERER['source'] = 'map-styles/slopesmap.xml'

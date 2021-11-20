@@ -1,0 +1,12 @@
+{% macro shield(base="syms", file="[fname].svg", font="DejaVu Sans Mono Bold",
+                spacing=400, tolerance=200, margin=20, repeat=200) -%}
+    <ShieldSymbolizer base="{{ base }}" file="{{ file }}" placement="line" face-name="{{ font }}" spacing="{{ spacing }}" label-position-tolerance="{{ tolerance }}" margin="{{ margin }}" repeat-distance="{{ repeat }} avoid-edges="true"/>
+{%- endmacro %}
+
+{% macro node(text, font="DejaVu Sans Condensed Bold", transform=None) -%}
+    <ShieldSymbolizer base="static" file="hikingnode.svg" dy="-1" allow_overlap="True" face-name="{{ font }}" vertical-alignment="middle" horizontal-alignment="middle"{{ transform | xmlarg('transform') }}>{{ text }}</ShieldSymbolizer>
+{%- endmacro %}
+
+{% macro line(color, linecap="round", linejoin="round", width=None, dasharray=None, gamma=None, opacity=None) -%}
+    <LineSymbolizer stroke="{{ color }}" stroke-linecap="{{ linecap }}" stroke-linejoin="{{ linejoin }}"{{ width | xmlarg('stroke-width') }}{{ dasharray | xmlarg('stroke-dasharray') }}{{ gamma | xmlarg('stroke-gamma') }}{{ opacity | xmlarg('stroke-opacity') }}" />
+{%- endmacro %}

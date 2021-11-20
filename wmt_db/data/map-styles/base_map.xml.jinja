@@ -1,0 +1,61 @@
+{% import 'macros/styles.jinja' as style %}
+{% import 'macros/zoom.jinja' as zoom %}
+{% import 'macros/layers.jinja' as layer %}
+{% import 'macros/levels.jinja' as level %}
+<Map background-color="#ffffff00" buffer-size="128" srs="+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +no_defs +over">
+
+<FileSource name="static">{{ cfg.DATA_DIR.absolute() }}/mapnik</FileSource>
+{% if cfg.ROUTES.symbol_datadir -%}
+<FileSource name="syms">{{ cfg.ROUTES.symbol_datadir.absolute() }}</FileSource>
+{%- endif %}
+
+<Datasource name="wmtdb">
+    <Parameter name="type">postgis</Parameter>
+    <Parameter name="port">5432</Parameter>
+    <Parameter name="estimate_extent">false</Parameter>
+    <Parameter name="extent">-20037508,-19929239,20037508,19929239</Parameter>
+    <Parameter name="dbname">{{ cfg.DB_NAME }}</Parameter>
+    <Parameter name="geometry_field">geom</Parameter>
+    <Parameter name="srid">{{ cfg.DB_SRID }}</Parameter>
+    {% if cfg.DB_USER -%}<Parameter name="user">{{ cfg.DB_USER }}</Parameter>{% endif %}
+    {% if cfg.DB_PASSWORD %}<Parameter name="password">{{ cfg.DB_PASSWORD }}</Parameter>{% endif %}
+</Datasource>
+
+<FontSet name="all-script-italic">
+  <Font face-name="DejaVu Sans Oblique" />
+  <Font face-name="Noto Sans UI Italic" />
+  <Font face-name="Noto Sans UI Regular" />
+  <Font face-name="Noto Sans CJK JP Regular" />
+  <Font face-name="Noto Sans Armenian Regular" />
+  <Font face-name="Noto Sans Bengali UI Regular" />
+  <Font face-name="Noto Sans Cham Regular" />
+  <Font face-name="Noto Sans Devanagari UI Regular" />
+  <Font face-name="Noto Sans Devanagari Regular" />
+  <Font face-name="Noto Sans Ethiopic Regular" />
+  <Font face-name="Noto Sans Georgian Regular" />
+  <Font face-name="Noto Sans Gujarati UI Regular" />
+  <Font face-name="Noto Sans Gujarati Regular" />
+  <Font face-name="Noto Sans Gurmukhi UI Regular" />
+  <Font face-name="Noto Sans Hebrew Regular" />
+  <Font face-name="Noto Sans Kannada UI Regular" />
+  <Font face-name="Noto Sans Khmer UI Regular" />
+  <Font face-name="Noto Sans Lao UI Regular" />
+  <Font face-name="Noto Sans Malayalam UI Regular" />
+  <Font face-name="Noto Sans Myanmar UI Regular" />
+  <Font face-name="Noto Sans Oriya UI Regular" />
+  <Font face-name="Noto Sans Oriya Regular" />
+  <Font face-name="Noto Sans Sinhala Regular" />
+  <Font face-name="Noto Sans Tamil UI Regular" />
+  <Font face-name="Noto Sans Telugu UI Regular" />
+  <Font face-name="Noto Sans Thaana Regular" />
+  <Font face-name="Noto Sans Thai UI Regular" />
+  <Font face-name="Noto Sans Tibetan Regular" />
+  <Font face-name="Noto Naskh Arabic UI Regular" />
+  <Font face-name="DejaVu Sans Book" />
+  <Font face-name="Droid Sans Fallback Regular" />
+  <Font face-name="Unifont Medium" />
+</FontSet>
+
+
+{% block content %}{% endblock %}
+</Map>

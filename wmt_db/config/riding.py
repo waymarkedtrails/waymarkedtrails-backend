@@ -47,9 +47,3 @@ NETWORKNODES.node_tag = 'rhn_ref'
 DEFSTYLE = RouteNetworkStyle()
 
 SYMBOLS = WmtConfig()
-
-#############################################################################
-#
-# Render settings
-
-RENDERER['source'] = 'map-styles/ridingmap.xml'

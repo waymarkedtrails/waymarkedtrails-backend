@@ -1,0 +1,12 @@
+<Style name="inrshields">
+  <Rule>
+    {{ style.shield() }}
+  </Rule>
+</Style>
+
+{% call layer.query('InrShields', min=zoom.z13, max=zoom.z11,
+                    styles=['inrshields']) %}
+  SELECT geom, inrshields[i] as fname, i as numshield
+  FROM {{ table.style }}, lateral generate_subscripts(inrshields, 1) as i
+  WHERE inrshields is not null
+{% endcall %}

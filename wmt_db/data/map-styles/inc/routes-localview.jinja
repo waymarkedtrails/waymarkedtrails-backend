@@ -1,0 +1,183 @@
+<Style name="localview-lwn-halo">
+  <Rule>
+    <Filter>[lwn]</Filter>
+    <MaxScaleDenominator>{{zoom.z14}}</MaxScaleDenominator>
+    {{ style.line(color.LOC_halo, opacity="0.5", width="4.0") }}
+  </Rule>
+</Style>
+
+<Style name="localview-iwn">
+  <Rule>
+    <Filter>[iwn] and ([rwn] or [nwn])</Filter>
+    {{ style.line(color.INT, width="9.0") }}
+  </Rule>
+  <Rule>
+    <Filter>[iwn] and not ([rwn] or [nwn])</Filter>
+    {{ style.line(color.INT_dark, width="9.0") }}
+  </Rule>
+</Style>
+
+<Style name="localview-nwn">
+  <Rule>
+    <Filter>[nwn]</Filter>
+    {{ style.line(color.NAT_bg, width="6.0") }}
+    </Rule>
+</Style>
+
+<Style name="localview-rwn-halo">
+  <Rule>
+    <Filter>[rwn] and not [iwn] and not [nwn]</Filter>
+    {{ style.line(color.REG_shadow, opacity="0.5", width="6.0") }}
+  </Rule>
+</Style>
+
+<Style name="localview-rwn">
+  <Rule>
+    <Filter>[rwn] and not [nwn] and [lwn]</Filter>
+    {{ style.line(color.REG_light, width="6.0") }}
+  </Rule>
+  <Rule>
+    <Filter>[rwn] and not [nwn] and not [lwn]</Filter>
+    {{ style.line(color.REG_light2, width="5.0") }}
+  </Rule>
+  <Rule>
+    <Filter>[rwn] and [nwn]</Filter>
+    {{ style.line(color.REG_light2, dasharray="2,10", width="5.0") }}
+  </Rule>
+</Style>
+
+<Style name="localview-lwn">
+  <Rule>
+    <Filter>[lwn] and not [iwn] and not [nwn] and not [rwn]</Filter>
+    {{ style.line(color.LOC, width="2.5") }}
+  </Rule>
+  <Rule>
+    <Filter>[lwn] and ([nwn] or [iwn] or [rwn])</Filter>
+    {{ style.line(color.LOC_light, width="2.0") }}
+  </Rule>
+</Style>
+
+{% call layer.query('LocalView', max=zoom.z13,
+                    styles=['localview-lwn-halo', 'localview-iwn', 'localview-nwn',
+                            'localview-rwn-halo', 'localview-rwn', 'localview-lwn']) %}
+  SELECT geom,
+       {{ layer.IWN_class }} > 0 as iwn,
+       {{ layer.NWN_class }} > 0 as nwn,
+       {{ layer.RWN_class }} > 0 as rwn,
+       {{ layer.LWN_class }} > 0 as lwn
+  FROM {{ table.style }}
+{% endcall %}
+
+
+
+{% if cfg.RENDER_OPTIONS.swiss_style %}
+<Style name="lovalview-swiss">
+  <Rule>
+    <Filter>[network] = "AL1"</Filter>
+    {{ style.line(color.SWISS_RED, width="2") }}
+  </Rule>
+  <Rule>
+    <Filter>[network] = "AL2"</Filter>
+    {{ style.line(color.SWISS_RED, dasharray="8,3", width="2") }}
+  </Rule>
+  <Rule>
+    <Filter>[network] = "AL3"</Filter>
+    {{ style.line(color.SWISS_RED, dasharray="4,3", width="2") }}
+  </Rule>
+  <Rule>
+    <Filter>[network] = "AL4"</Filter>
+    {{ style.line(color.SWISS_RED, dasharray="1,6", width="3.0") }}
+  </Rule>
+</Style>
+
+{% call layer.query('LocalViewSwiss', max=zoom.z13,
+                    styles=['lovalview-swiss']) %}
+  SELECT network, geom FROM {{ table.routes }} WHERE network LIKE 'AL%'
+{% endcall %}
+{% endif %}
+
+
+
+{% if cfg.NETWORKNODES %}
+<Style name="localview-node">
+  <Rule>
+    <MinScaleDenominator>{{ zoom.s15 }}</MinScaleDenominator>
+    <Filter>[iwn]</Filter>
+    {{ style.line("#00ff00", width="1.8") }}
+    {{ style.line("#ff0000", width="1.5") }}
+  </Rule>
+  <Rule>
+    <MinScaleDenominator>{{ zoom.s15 }}</MinScaleDenominator>
+    <Filter>not [iwn]</Filter>
+    {{ style.line(color.NNW, width="1.6") }}
+  </Rule>
+  <Rule>
+    <MaxScaleDenominator>{{ zoom.s15 }}</MaxScaleDenominator>
+    {{ style.line(color.NNW, width="2") }}
+  </Rule>
+</Style>
+
+{% call layer.query('LocalViewNodeNetwork', max=zoom.z13,
+                    styles=['localview-node']) %}
+  SELECT geom, {{ level.IWN_class }} > 0 as iwn
+  FROM {{ table.style }} WHERE style = 'NDS'
+{% endcall %}
+{% endif %}
+
+
+
+{% if cfg.GUIDEPOSTS %}
+<Style name="Guideposts">
+  <Rule>
+    <Filter>[name] != '' or [ele] != ''</Filter>
+    <MaxScaleDenominator>{{ zoom.z15 }}</MaxScaleDenominator>
+    <ShieldSymbolizer allow-overlap="true" base="static" unlock-image="true" dy="18" fontset-name="all-script-italic" file="guidepost_gray.svg" halo-radius="2" size="8">
+      [name]+'&#10;'+[ele]
+    </ShieldSymbolizer>
+  </Rule>
+  <Rule>
+    <ElseFilter />
+    <PointSymbolizer allow-overlap="true" base="static" file="guidepost_gray.svg" />
+  </Rule>
+</Style>
+
+{% call layer.query('LocalViewGuidePosts', max=zoom.z14,
+                    styles=['localview-guideposts']) %}
+  SELECT name, ele, geom FROM {{ table.guideposts }}
+{% endcall %}
+{% endif %}
+
+{% if cfg.NETWORKNODES %}
+<Style name="localview-node-points">
+  <Rule>
+    <Filter>[len] > 1</Filter>
+    {{ style.node("[name]", transform="scale([len] 1)") }}
+  </Rule>
+  <Rule>
+    <ElseFilter/>
+    {{ style.node("[name]") }}
+  </Rule>
+</Style>
+
+{% call layer.query('LocalViewNodeNetworkNodes', max=zoom.z14,
+                    styles=['localview-node-points']) %}
+  SELECT name, 0.6 * length(name) as len, geom FROM {{ table.networknodes }}
+{% endcall %}
+{% endif %}
+
+
+
+<Style name="localview-shields">
+  <Rule>
+    {{ style.shield() }}
+  </Rule>
+</Style>
+
+{% call layer.query('LocalViewShields', max=zoom.z13,
+                    styles=['localview-shields']) %}
+  SELECT geom, shld[i] as fname, i as numshield
+          FROM (SELECT geom, array_cat(lshields, inrshields) as shld
+                FROM {{ table.style }}
+                WHERE lshields is not null or inrshields is not null) x,
+               lateral generate_subscripts(shld, 1) as i order by fname, st_length(geom) desc
+{% endcall %}
