@@ -61,10 +61,10 @@
                     styles=['localview-lwn-halo', 'localview-iwn', 'localview-nwn',
                             'localview-rwn-halo', 'localview-rwn', 'localview-lwn']) %}
   SELECT geom,
-       {{ layer.IWN_class }} > 0 as iwn,
-       {{ layer.NWN_class }} > 0 as nwn,
-       {{ layer.RWN_class }} > 0 as rwn,
-       {{ layer.LWN_class }} > 0 as lwn
+       {{ level.IWN_class }} > 0 as iwn,
+       {{ level.NWN_class }} > 0 as nwn,
+       {{ level.RWN_class }} > 0 as rwn,
+       {{ level.LWN_class }} > 0 as lwn
   FROM {{ table.style }}
 {% endcall %}
 
@@ -101,18 +101,18 @@
 {% if cfg.NETWORKNODES %}
 <Style name="localview-node">
   <Rule>
-    <MinScaleDenominator>{{ zoom.s15 }}</MinScaleDenominator>
+    <MinScaleDenominator>{{ zoom.z15 }}</MinScaleDenominator>
     <Filter>[iwn]</Filter>
     {{ style.line("#00ff00", width="1.8") }}
     {{ style.line("#ff0000", width="1.5") }}
   </Rule>
   <Rule>
-    <MinScaleDenominator>{{ zoom.s15 }}</MinScaleDenominator>
+    <MinScaleDenominator>{{ zoom.z15 }}</MinScaleDenominator>
     <Filter>not [iwn]</Filter>
     {{ style.line(color.NNW, width="1.6") }}
   </Rule>
   <Rule>
-    <MaxScaleDenominator>{{ zoom.s15 }}</MaxScaleDenominator>
+    <MaxScaleDenominator>{{ zoom.z15 }}</MaxScaleDenominator>
     {{ style.line(color.NNW, width="2") }}
   </Rule>
 </Style>
@@ -127,7 +127,7 @@
 
 
 {% if cfg.GUIDEPOSTS %}
-<Style name="Guideposts">
+<Style name="localview-guideposts">
   <Rule>
     <Filter>[name] != '' or [ele] != ''</Filter>
     <MaxScaleDenominator>{{ zoom.z15 }}</MaxScaleDenominator>
@@ -151,7 +151,7 @@
 <Style name="localview-node-points">
   <Rule>
     <Filter>[len] > 1</Filter>
-    {{ style.node("[name]", transform="scale([len] 1)") }}
+    {{ style.node("[name]", transform="scale([len], 1)") }}
   </Rule>
   <Rule>
     <ElseFilter/>
@@ -169,7 +169,7 @@
 
 <Style name="localview-shields">
   <Rule>
-    {{ style.shield() }}
+    {{ style.shield(spacing=300) }}
   </Rule>
 </Style>
 
@@ -179,5 +179,5 @@
           FROM (SELECT geom, array_cat(lshields, inrshields) as shld
                 FROM {{ table.style }}
                 WHERE lshields is not null or inrshields is not null) x,
-               lateral generate_subscripts(shld, 1) as i order by fname, st_length(geom) desc
+               lateral generate_subscripts(shld, 1) as i order by st_length(geom) desc, i
 {% endcall %}

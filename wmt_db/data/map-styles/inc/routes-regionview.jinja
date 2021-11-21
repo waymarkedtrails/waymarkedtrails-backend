@@ -97,9 +97,9 @@
                     styles=['regionview-lwn', 'regionview-iwn',
                             'regionview-nwn', 'regionsview-rwn']) %}
   SELECT geom,
-       {{ layer.IWN_class }} > 0 as iwn,
-       {{ layer.NWN_class }} > 0 as nwn,
-       {{ layer.RWN_class }} > 0 as rwn,
-       {{ layer.LWN_class }} > 0 as lwn
+       {{ level.IWN_class }} > 0 as iwn,
+       {{ level.NWN_class }} > 0 as nwn,
+       {{ level.RWN_class }} > 0 as rwn,
+       {{ level.LWN_class }} > 0 as lwn
   FROM {{ table.style }} WHERE class != 0
 {% endcall %}
