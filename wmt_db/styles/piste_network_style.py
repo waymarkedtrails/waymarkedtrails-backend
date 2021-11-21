@@ -34,15 +34,16 @@ class PisteNetworkStyle(object):
         return coll
 
     def add_to_collector(self, c, relinfo):
-        for k, v in self.difficulty_map.items():
-            if relinfo['difficulty'] == v:
-                c[k] = True
-        for k, v in self.piste_type.items():
-            if relinfo['piste'] == v:
-                c[k] = True
+        if relinfo['top']:
+            for k, v in self.difficulty_map.items():
+                if relinfo['difficulty'] == v:
+                    c[k] = True
+            for k, v in self.piste_type.items():
+                if relinfo['piste'] == v:
+                    c[k] = True
 
-        if relinfo['symbol'] is not None and len(c['symbol']) < 5:
-                c['symbol'].append(relinfo['symbol'])
+            if relinfo['symbol'] is not None and len(c['symbol']) < 5:
+                    c['symbol'].append(relinfo['symbol'])
 
         c['sources'].append(relinfo['id'])
 

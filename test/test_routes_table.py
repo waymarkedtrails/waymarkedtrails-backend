@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-only
 #
 # This file is part of the Waymarked Trails Map Project
-# Copyright (C) 2020 Sarah Hoffmann
+# Copyright (C) 2021 Sarah Hoffmann
+
+from pathlib import Path
 
 import pytest
 
@@ -33,7 +35,7 @@ class TestRoutesTable:
         table_name = 'test'
         network_map = dict(iwn=Network.INT(), nwn=Network.NAT(),
                            rwn=Network.REG(), lwn=Network.LOC())
-        symbol_datadir =  ''
+        symbol_datadir =  Path('')
         tag_filter = None
 
 

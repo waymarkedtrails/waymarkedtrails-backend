@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-only
 #
 # This file is part of the Waymarked Trails Map Project
-# Copyright (C) 2020 Sarah Hoffmann
+# Copyright (C) 2021 Sarah Hoffmann
+
+from pathlib import Path
 
 import pytest
 import sqlalchemy as sa
@@ -37,7 +39,7 @@ class TestPisteTable:
 
     class Config(PisteTableConfig):
         table_name = 'test'
-        symbol_datadir = ''
+        symbol_datadir = Path('')
 
     @pytest.fixture(autouse=True)
     def init_tables(self, mapdb, segment_table, countries, shields):
