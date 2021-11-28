@@ -17,8 +17,9 @@ The code is written in Python3. You need to install
 [waymarkedtrails-shields](https://github.com/waymarkedtrails/waymarkedtrails-shields)
 first as well as their respective requirements.
 
+
 Rendering requires [Mapnik](https://mapnik.org/) together with its Python
-bindings.
+bindings. PyCairo >= 1.18 is needed or shields will have the wrong size.
 
 No special installation is needed for this repository. Just download the code
 and run the scripts in place.
@@ -87,5 +88,5 @@ License
 
 The source code is available under GPLv3. See COPYING for more information.
 
-Images in `data/shields` are an exception. Rights remain with the operators
+Images in `wmt_db/data/shields` are an exception. Rights remain with the operators
 of the respective routes.
