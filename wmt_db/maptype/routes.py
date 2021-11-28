@@ -5,7 +5,9 @@
 
 """ Database for the classic route view (hiking, cycling, etc.)
 """
-from sqlalchemy import MetaData, select, text
+import types
+
+from sqlalchemy import MetaData, select, text, Index
 
 import osgende
 from osgende.generic import FilteredTable
@@ -72,6 +74,15 @@ def create_mapdb(site_config, options):
     return db
 
 
+def _filtered_table_index(tab, engine):
+    with engine.begin() as conn:
+        Index('idx_filtered_relations_members', tab.c.members,
+              postgresql_using='gin').create(conn)
+
+def _segments_table_index(tab, engine):
+    with engine.begin() as conn:
+        Index('idx_segment_rels', tab.c.rels, postgresql_using='gin').create(conn)
+
 def setup_tables(db, route_class=Routes):
     if not db.get_option('no_engine'):
         country = CountryGrid(MetaData(), db.site_config.DB_TABLES.country)
@@ -92,6 +103,7 @@ def setup_tables(db, route_class=Routes):
                          FilteredTable(db.metadata, tabname.route_filter,
                                        db.osmdata.relation,
                                        text(f"({db.site_config.DB_ROUTE_SUBSET})")))
+    rfilt.after_construct = types.MethodType(_filtered_table_index, rfilt)
 
     # Then we create the connection between ways and relations.
     # This also adds geometries.
@@ -103,6 +115,7 @@ def setup_tables(db, route_class=Routes):
     segments = db.add_table('segments',
                             SegmentsTable(db.metadata, tabname.segment, relway,
                                           (relway.c.rels,)))
+    segments.after_construct = types.MethodType(_segments_table_index, segments)
 
     # hierarchy table for super relations
     rtree = db.add_table('hierarchy',
@@ -131,6 +144,19 @@ def setup_tables(db, route_class=Routes):
         db.add_table('guideposts', GuidePosts(db.metadata, filt, cfg))\
            .set_update_table(uptable)
 
+        def _add_index(tab, engine):
+            with engine.begin() as conn:
+                res = conn.scalar("""SELECT count(*) FROM pg_indexes
+                                     WHERE tablename = 'nodes'
+                                     AND indexname = 'idx_nodes_guidepost'""")
+                if res == 0:
+                    tc = db.osmdata.node.c
+                    where= 'tags @> \'{"tourism": "information", "information": "guidepost"}\'::jsonb'
+                    Index(f'idx_nodes_guidepost', tc.id,
+                          postgresql_where=text(where)).create(conn)
+
+        filt.after_construct = types.MethodType(_add_index, filt)
+
     # optional table for network nodes
     if db.site_config.NETWORKNODES is not None:
         cfg = db.site_config.NETWORKNODES
@@ -140,3 +166,12 @@ def setup_tables(db, route_class=Routes):
                                  db.osmdata.node.c.tags.has_key(cfg.node_tag),
                                  view_only=True))
         db.add_table('networknodes', NetworkNodes(db.metadata, filt, cfg))
+
+        def _add_index(tab, engine):
+            with engine.begin() as conn:
+                tc = db.osmdata.node.c
+                tag = db.site_config.NETWORKNODES.node_tag
+                Index(f'idx_nodes_{tag}', tc.id,
+                      postgresql_where=tc.tags.has_key(tag)).create(conn)
+
+        filt.after_construct = types.MethodType(_add_index, filt)
