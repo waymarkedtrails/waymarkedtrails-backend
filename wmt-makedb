@@ -229,6 +229,8 @@ if __name__ == "__main__":
         db = BaseDb(options)
         name = 'base'
     else:
+        if options.action == 'mapstyle':
+            options.no_engine = True
         db = MapStyleDb(options)
         name = options.routemap
 
