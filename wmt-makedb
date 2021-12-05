@@ -49,7 +49,9 @@ class BaseDb(object):
 
     def construct(self):
         args = self._osgende_import_args()
-        args.extend(('-i', '-c', options.input_file))
+        args.extend(('-i', '-c', self.options.input_file))
+        if self.options.ro_user:
+            args.extend(('-U', self.options.ro_user))
 
         print('osgende-import', args)
         os.execvp('osgende-import', args)
