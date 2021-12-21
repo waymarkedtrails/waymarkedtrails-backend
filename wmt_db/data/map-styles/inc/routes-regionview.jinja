@@ -95,7 +95,7 @@
 
 {% call layer.query('RegionView', min=zoom.z13, max=zoom.z12,
                     styles=['regionview-lwn', 'regionview-iwn',
-                            'regionview-nwn', 'regionsview-rwn']) %}
+                            'regionview-nwn', 'regionview-rwn']) %}
   SELECT geom,
        {{ level.IWN_class }} > 0 as iwn,
        {{ level.NWN_class }} > 0 as nwn,
