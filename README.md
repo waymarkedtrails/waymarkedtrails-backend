@@ -33,7 +33,7 @@ Then install the remaining dependencies in a virtual environment:
     . wmtenv/bin/activate
 
     pip install -U osmium>=3.2.0 PyCairo>=1.18 \
-                   git+https://github.com/waymarkedtrails/osgende@rework-mapdb
+                   git+https://github.com/waymarkedtrails/osgende@master
                    git+https://github.com/waymarkedtrails/waymarkedtrails-shields@master
 
 Finally install the backend:
