@@ -5,17 +5,21 @@ Waymarked Trails - Database Backend
 recreational routes from [OpenStreetMap](https://openstreetmap.org) and
 lets you inspect the routes and selected details.
 
-This repository contains the database backend and map rendering. For the
-website frontend have a look at
-[waymarked-trails-site](https://github.com/waymarkedtrails/waymarked-trails-site).
+This repository contains the database backend and map rendering. This is
+sufficient for creating the map overlays.
+
+To set up the full site, you also need:
+* the [API](https://github.com/waymarkedtrails/waymarkedtrails-api)
+* the [website](https://github.com/waymarkedtrails/waymarkedtrails-website)
+
 
 Installation
 ============
 
-The code is written in Python3. You need to install
+The code is written in Python3. You need to first install
 [osgende](https://github.com/waymarkedtrails/osgende) and
 [waymarkedtrails-shields](https://github.com/waymarkedtrails/waymarkedtrails-shields)
-first as well as their respective requirements.
+as well as their respective requirements.
 
 Rendering requires [Mapnik](https://mapnik.org/) together with its Python
 bindings. PyCairo >= 1.18 is needed or shields will have the wrong size.
@@ -49,7 +53,7 @@ separate schemas which contain the data for the various route maps.
 
 ### Configuring the Installation
 
-Custom configuration is expected in the modlue `wmt_local_config.backend`. To
+Custom configuration is expected in the module `wmt_local_config.backend`. To
 create such a file create first a directory `wmt_local_config` and then
 create a file `backend.py`. See `wmt_db/config/common.py` for possible settings.
 In particular you might want to set:
