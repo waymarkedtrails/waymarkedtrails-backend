@@ -142,6 +142,142 @@ class TestRoutesTable:
             dict(id=2, name='1', ref=None)
             ])
 
+
+    @pytest.mark.parametrize('super_network,sub_top', [('rwn', False), ('nwn', True)])
+    def test_add_superroute(self, mapdb, tags, members,
+                               super_network, sub_top):
+        mapdb.insert_into('src_rels')\
+            .line(1, tags=tags(name='sub', network='rwn'), members=members)
+
+        mapdb.construct()
+
+        mapdb.table_equals('test', [
+            dict(id=1, name='sub', top=True)
+            ])
+
+        mapdb.modify('src_rels')\
+            .add(1000, tags=tags(name='super', network=super_network),
+                 members=(dict(id=1, role='', type='R'),))
+
+        mapdb.update()
+
+        mapdb.table_equals('test', [
+            dict(id=1, name='sub', top=sub_top),
+            dict(id=1000, name='super', top=True)
+            ])
+
+
+    def test_delete_superroute(self, mapdb, tags, members):
+        mapdb.insert_into('src_rels')\
+            .line(10, tags=tags(name='super', network='nwn'),
+                  members=(dict(id=3, role='', type='R'),))\
+            .line(3, tags=tags(name='sub', network='nwn'), members=members)
+
+        mapdb.construct()
+
+        mapdb.table_equals('test', [
+            dict(id=3, name='sub', top=False),
+            dict(id=10, name='super', top=True)
+            ])
+
+        mapdb.modify('src_rels')\
+            .delete(10)
+
+        mapdb.update()
+
+        mapdb.table_equals('test', [
+            dict(id=3, name='sub', top=True),
+            ])
+
+
+    def test_add_to_existing_superroute(self, mapdb, tags, members):
+        mapdb.insert_into('src_rels')\
+            .line(1, tags=tags(name='old', network='rwn'), members=members)\
+            .line(2, tags=tags(name='new', network='rwn'), members=members)\
+            .line(99, tags=tags(name='alle', network='rwn'),
+                  members=(dict(id=1, role='', type='R'),))
+
+        mapdb.construct()
+
+        mapdb.table_equals('test', [
+            dict(id=1, top=False),
+            dict(id=2, top=True),
+            dict(id=99, top=True)
+            ])
+
+        mapdb.modify('src_rels')\
+            .modify(99, tags=tags(name='alle', network='rwn'),
+                    members=(dict(id=1, role='', type='R'),
+                             dict(id=2, role='', type='R')))
+
+        mapdb.update()
+
+        mapdb.table_equals('test', [
+            dict(id=1, top=False),
+            dict(id=2, top=False),
+            dict(id=99, top=True)
+            ])
+
+
+    def test_delete_from_existing_superroute(self, mapdb, tags, members):
+        mapdb.insert_into('src_rels')\
+            .line(1, tags=tags(name='old', network='rwn'), members=members)\
+            .line(2, tags=tags(name='new', network='rwn'), members=members)\
+            .line(99, tags=tags(name='alle', network='rwn'),
+                  members=(dict(id=1, role='', type='R'),
+                           dict(id=2, role='', type='R')))
+
+        mapdb.construct()
+
+        mapdb.table_equals('test', [
+            dict(id=1, top=False),
+            dict(id=2, top=False),
+            dict(id=99, top=True)
+            ])
+
+        mapdb.modify('src_rels')\
+            .modify(99, tags=tags(name='alle', network='rwn'),
+                    members=(dict(id=1, role='', type='R'),))
+
+        mapdb.update()
+
+        mapdb.table_equals('test', [
+            dict(id=1, top=False),
+            dict(id=2, top=True),
+            dict(id=99, top=True)
+            ])
+
+
+    def test_change_superroute_network(self, mapdb, tags, members):
+        mapdb.insert_into('src_rels')\
+            .line(1, tags=tags(name='old', network='nwn'), members=members)\
+            .line(2, tags=tags(name='new', network='rwn'), members=members)\
+            .line(99, tags=tags(name='alle', network='rwn'),
+                  members=(dict(id=1, role='', type='R'),
+                           dict(id=2, role='', type='R')))
+
+        mapdb.construct()
+
+        mapdb.table_equals('test', [
+            dict(id=1, top=True),
+            dict(id=2, top=False),
+            dict(id=99, top=True)
+            ])
+
+        mapdb.modify('src_rels')\
+            .modify(99, tags=tags(name='alle', network='nwn'),
+                    members=(dict(id=1, role='', type='R'),
+                             dict(id=2, role='', type='R')))
+
+        mapdb.update()
+
+        mapdb.table_equals('test', [
+            dict(id=1, top=False),
+            dict(id=2, top=True),
+            dict(id=99, top=True)
+            ])
+
+
     def test_hierarchy(self, mapdb, tags, members):
         mapdb.insert_into('src_rels')\
             .line(1, tags=tags(name='sub'), members=members)\

@@ -1,14 +1,14 @@
 # SPDX-License-Identifier: GPL-3.0-only
 #
 # This file is part of Waymarked Trails
-# Copyright (C) 2020 Sarah Hoffmann
+# Copyright (C) 2021 Sarah Hoffmann
 
 import dataclasses
 from typing import Dict, List, Union
 
 import sqlalchemy as sa
 from sqlalchemy.sql import functions as saf
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, ARRAY
 from geoalchemy2 import Geometry
 
 from osgende.common.table import TableSource
@@ -31,6 +31,7 @@ class RouteRow:
     network: Union[None, str] = None
     level: int = Network.LOC()
     top: bool = True
+    rel_members: Union[None, List[int]] = None
 
 
 class Routes(ThreadableDBObject, TableSource):
@@ -52,6 +53,7 @@ class Routes(ThreadableDBObject, TableSource):
                          sa.Column('network', sa.String),
                          sa.Column('level', sa.SmallInteger),
                          sa.Column('top', sa.Boolean),
+                         sa.Column('rel_members', ARRAY(sa.BigInteger)),
                          sa.Column('geom', Geometry('GEOMETRY', srid=ways.srid)))
 
         super().__init__(table, relations.change)
@@ -119,7 +121,11 @@ class Routes(ThreadableDBObject, TableSource):
     def update(self, engine):
         with engine.begin() as conn:
             # delete removed relations
-            conn.execute(self.delete(self.rels.select_delete()))
+            free_rels = set()
+            cur = conn.execute(self.delete(self.rels.select_delete()).returning(self.c.rel_members))
+            for res in cur:
+                if res[0]:
+                   free_rels.update(res[0])
             # collect all changed relations in a temporary table
             # 1. relations added or modified
             sels = [sa.select([self.rels.cc.id])]
@@ -138,9 +144,21 @@ class Routes(ThreadableDBObject, TableSource):
             conn.execute(tmp_rels.insert().from_select(tmp_rels.c,
                 sa.select([self.rtree.c.parent], distinct=True)
                   .where(self.rtree.c.child.in_(sa.select([tmp_rels.c.id])))))
+            # 4. Child relations of added and modified relations, old and new.
+            #    Their top might need fixing.
+            sels = [sa.select([saf.func.unnest(self.c.rel_members)])\
+                      .where(self.c.id.in_(self.rels.select_add_modify()))]
+            elem = sa.select([sa.func.jsonb_array_elements(self.rels.c.members, type_=JSONB).label('ele')])\
+                     .where(self.rels.c.id.in_(self.rels.select_add_modify()))\
+                     .alias()
+            sels.append(sa.select([elem.c.ele['id'].as_integer()]))
+            conn.execute(tmp_rels.insert().from_select(tmp_rels.c, sa.union(*sels)))
+            # 5. Relation whose parent was deleted. (top might need fixing)
+            if free_rels:
+                conn.execute(tmp_rels.insert().values([{'id': x} for x in free_rels]))
 
             # and insert/update all
-            self._insert_objects(conn, self.rels.c.id.in_(tmp_rels.select()))
+            self._insert_objects(conn, self.rels.c.id.in_(tmp_rels.select().distinct()))
 
             tmp_rels.drop(conn)
 
@@ -234,6 +252,8 @@ class Routes(ThreadableDBObject, TableSource):
 
         # child relations
         members, relids = self._filter_members(obj['id'], obj['members'])
+
+        outtags.rel_members = relids if relids else None
 
         # geometry
         geom = make_geometry(conn, members, self.ways, self.data)
