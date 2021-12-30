@@ -250,29 +250,29 @@ class TestRoutesTable:
 
     def test_change_superroute_network(self, mapdb, tags, members):
         mapdb.insert_into('src_rels')\
-            .line(1, tags=tags(name='old', network='nwn'), members=members)\
+            .line(6223084835, tags=tags(name='old', network='nwn'), members=members)\
             .line(2, tags=tags(name='new', network='rwn'), members=members)\
             .line(99, tags=tags(name='alle', network='rwn'),
-                  members=(dict(id=1, role='', type='R'),
+                  members=(dict(id=6223084835, role='', type='R'),
                            dict(id=2, role='', type='R')))
 
         mapdb.construct()
 
         mapdb.table_equals('test', [
-            dict(id=1, top=True),
+            dict(id=6223084835, top=True),
             dict(id=2, top=False),
             dict(id=99, top=True)
             ])
 
         mapdb.modify('src_rels')\
             .modify(99, tags=tags(name='alle', network='nwn'),
-                    members=(dict(id=1, role='', type='R'),
+                    members=(dict(id=6223084835, role='', type='R'),
                              dict(id=2, role='', type='R')))
 
         mapdb.update()
 
         mapdb.table_equals('test', [
-            dict(id=1, top=False),
+            dict(id=6223084835, top=False),
             dict(id=2, top=True),
             dict(id=99, top=True)
             ])

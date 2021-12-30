@@ -151,7 +151,7 @@ class Routes(ThreadableDBObject, TableSource):
             elem = sa.select([sa.func.jsonb_array_elements(self.rels.c.members, type_=JSONB).label('ele')])\
                      .where(self.rels.c.id.in_(self.rels.select_add_modify()))\
                      .alias()
-            sels.append(sa.select([elem.c.ele['id'].as_integer()]))
+            sels.append(sa.select([sa.cast(elem.c.ele['id'].as_string(), sa.BigInteger)]))
             conn.execute(tmp_rels.insert().from_select(tmp_rels.c, sa.union(*sels)))
             # 5. Relation whose parent was deleted. (top might need fixing)
             if free_rels:
