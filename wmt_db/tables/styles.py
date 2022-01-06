@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 #
 # This file is part of the Waymarked Trails Map Project
-# Copyright (C) 2018-2020 Sarah Hoffmann
+# Copyright (C) 2018-2022 Sarah Hoffmann
 
 import sqlalchemy as sa
 from geoalchemy2 import Geometry
@@ -107,7 +107,7 @@ class StyleTable(ThreadableDBObject, TableSource):
         # select ways with changed rels joined with data with geom not null
         sql = self._synchronise_sql([c for c in self.c
                                      if c.name not in ('id', 'geom')])\
-                .where(self.ways.c.rels.op('&& ARRAY')(self.rels.select_add_modify()))\
+                .where(self.ways.c.rels.op('&& ARRAY')(self.rels.select_add_modify().scalar_subquery()))\
                 .where(self.ways.c.id == self.c.id)\
                 .where(self.c.geom is not None)
 
@@ -142,7 +142,7 @@ class StyleTable(ThreadableDBObject, TableSource):
         m = self.ways
         parents = sa.select([h.c.parent])\
                       .where(h.c.child == sa.func.any(m.c.rels))\
-                      .distinct().as_scalar()
+                      .distinct().scalar_subquery()
 
         rows = [m.c.id, (m.c.rels + sa.func.array(parents)).label('rels')]
         if add_rows is not None:

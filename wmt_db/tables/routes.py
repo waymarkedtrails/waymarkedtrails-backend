@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 #
 # This file is part of Waymarked Trails
-# Copyright (C) 2021 Sarah Hoffmann
+# Copyright (C) 2022 Sarah Hoffmann
 
 import dataclasses
 from typing import Dict, List, Union
@@ -100,7 +100,7 @@ class Routes(ThreadableDBObject, TableSource):
         # Lastly, process all routes that are nobody's child.
         subset = self.rels.data.select()\
                  .where(self.rels.c.id.notin_(
-                     sa.select([h.c.child], distinct=True).as_scalar()))
+                     sa.select([h.c.child], distinct=True).scalar_subquery()))
         if subsel is not None:
             subset = subset.where(subsel)
         self.insert_objects(conn, subset)

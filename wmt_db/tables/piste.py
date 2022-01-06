@@ -2,7 +2,7 @@
 #
 # This file is part of the Waymarked Trails Map Project
 # Copyright (C) 2015 Michael Spreng
-#               2018-2020 Sarah Hoffmann
+#               2018-2022 Sarah Hoffmann
 """ Customized tables for piste routes and ways.
 """
 
@@ -101,7 +101,7 @@ class PisteRoutes(ThreadableDBObject, TableSource):
         # Lastly, process all routes that are nobody's child.
         subset = self.rels.data.select()\
                  .where(self.rels.c.id.notin_(
-                     sa.select([h.c.child], distinct=True).as_scalar()))
+                     sa.select([h.c.child], distinct=True).scalar_subquery()))
         self.insert_objects(conn, subset)
 
 
@@ -131,7 +131,7 @@ class PisteRoutes(ThreadableDBObject, TableSource):
         # Lastly, process all routes that are nobody's child.
         subset = self.rels.data.select()\
                  .where(self.rels.c.id.notin_(
-                     sa.select([h.c.child], distinct=True).as_scalar()))
+                     sa.select([h.c.child], distinct=True).scalar_subquery()))
         self.insert_objects(engine, subset)
 
         with engine.begin() as conn:

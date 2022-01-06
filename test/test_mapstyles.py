@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 #
 # This file is part of the Waymarked Trails Map Project
-# Copyright (C) 2020 Sarah Hoffmann
+# Copyright (C) 2022 Sarah Hoffmann
 
 import os
 
@@ -50,7 +50,7 @@ def run_import(db):
 
 def test_routedb(site_config):
     db = create_mapdb(site_config, Options)
-    db.engine = sa.create_engine(URL('postgresql', database=Options.database))
+    db.engine = sa.create_engine(URL.create('postgresql', database=Options.database))
     with db.engine.begin() as conn:
         conn.execute("CREATE EXTENSION postgis")
 
@@ -60,7 +60,7 @@ def test_routedb(site_config):
 
 def test_pistedb():
     db = create_slopes_mapdb(slopes_config, Options)
-    db.engine = sa.create_engine(URL('postgresql', database=Options.database))
+    db.engine = sa.create_engine(URL.create('postgresql', database=Options.database))
     with db.engine.begin() as conn:
         conn.execute("CREATE EXTENSION postgis")
 
