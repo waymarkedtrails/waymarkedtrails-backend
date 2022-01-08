@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 #
 # This file is part of the Waymarked Trails Map Project
-# Copyright (C) 2011-2020 Sarah Hoffmann
+# Copyright (C) 2011-2022 Sarah Hoffmann
 """
 Create, import and modify tables for a route map.
 """
@@ -30,11 +30,11 @@ def _filter_xml_arg(arg, parameter_name):
     return f' {parameter_name}="{arg}"'
 
 
-class BaseDb(object):
+class BaseDb:
 
     def __init__(self, options):
-        dba = URL('postgresql', username=options.username,
-                      password=options.password, database=options.database)
+        dba = URL.create('postgresql', username=options.username,
+                         password=options.password, database=options.database)
         self.engine = sa.create_engine(dba, echo=options.echo_sql)
         self.options = options
 
