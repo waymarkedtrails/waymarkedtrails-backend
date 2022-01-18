@@ -16,6 +16,7 @@ from osgende.relations import RelationHierarchy
 from osgende.common.tags import TagStore
 from wmt_shields import ShieldFactory
 
+from wmt_db.common.route_types import Network
 from ..tables.countries import CountryGrid
 from ..tables.routes import Routes
 from ..tables.guideposts import GuidePosts
@@ -55,14 +56,14 @@ class RouteMapDB(osgende.MapDB):
         with self.engine.begin() as conn:
             for r in conn.execution_options(stream_results=True).execute(sel):
                 sym = route.symbols.create(TagStore(r["tags"]), r["country"],
-                                           r["level"])
+                                           style=Network.from_int(r["level"]).name)
 
                 if sym is not None:
-                    symid = sym.get_id()
+                    symid = sym.uuid()
 
                     if symid not in donesyms:
                         donesyms.add(symid)
-                        route.symbols.write(sym, True)
+                        sym.to_file(self.site_config.ROUTES.symbol_datadir / f'{symid}.svg', format='svg')
 
 
 def create_mapdb(site_config, options):
