@@ -9,31 +9,48 @@
   </Rule>
 </Style>
 
-{% call layer.query('WorldviewHigh', min=zoom.z3,
+{% call layer.query('WorldviewHigh', min=zoom.z5,
                     styles=['worldview-high']) %}
-  SELECT ST_Simplify(geom, 10000) as geom, level
+  SELECT ST_ChaikinSmoothing(ST_Simplify(lowzoom_geom, 10000)) as geom, level
   FROM {{ table.routes }}
-  WHERE top and network is null and level >= {{ level.NWN }} - 3 order by level
+  WHERE top and level >= {{ level.NWN }} - 3 order by level
 {% endcall %}
 
 
 
 <Style name="worldview-mid">
   <Rule>
-    <Filter>[noiwn]</Filter>
-    {{ style.line(color.NAT, width="1.3")}}
+    <Filter>[iwn]</Filter>
+    {{ style.line(color.INT, width="2.0")}}
   </Rule>
   <Rule>
     <ElseFilter />
-    {{ style.line(color.INT, width="2.0")}}
+    {{ style.line(color.NAT, width="1.3")}}
   </Rule>
 </Style>
 
-{% call layer.query('WorldviewMid', max=zoom.z3, min=zoom.z9,
+{% call layer.query('WorldviewMid', max=zoom.z5, min=zoom.z7,
                     styles=['worldview-mid']) %}
-  SELECT ST_Simplify(geom, 500) as geom, {{ level.IWN_class}} = 0 as noiwn
-  FROM {{ table.style }}
-  WHERE (class::bit(28) >> 14)::integer > 0
+  SELECT ST_ChaikinSmoothing(ST_Simplify(lowzoom_geom, 3000)) as geom, level {{ level.IWN_all }} as iwn
+  FROM {{ table.routes }}
+  WHERE level >= {{ level.NWN }} - 3 and top
+  ORDER BY level
+{% endcall %}
+
+{% call layer.query('WorldviewMid', max=zoom.z7, min=zoom.z8,
+                    styles=['worldview-mid']) %}
+  SELECT ST_ChaikinSmoothing(ST_Simplify(lowzoom_geom, 2000)) as geom, level {{ level.IWN_all }} as iwn
+  FROM {{ table.routes }}
+  WHERE level >= {{ level.NWN }} - 3 and top
+  ORDER BY level
+{% endcall %}
+
+{% call layer.query('WorldviewMid', max=zoom.z8, min=zoom.z9,
+                    styles=['worldview-mid']) %}
+  SELECT ST_ChaikinSmoothing(ST_Simplify(lowzoom_geom, 1000)) as geom, level {{ level.IWN_all }} as iwn
+  FROM {{ table.routes }}
+  WHERE level >= {{ level.NWN }} - 3 and top
+  ORDER BY level
 {% endcall %}
 
 
@@ -78,20 +95,20 @@
 
 <Style name="worldview-shields">
   <Rule>
-    {{ style.shield(spacing=200) }}
+    {{ style.shield(spacing=400, margin=50, repeat=200) }}
   </Rule>
 </Style>
 
 {% call layer.query('WorldViewShieldsIwn', max=zoom.z7, min=zoom.z10, buffer=512,
                     styles=['worldview-shields']) %}
-  SELECT geom, symbol as fname
+  SELECT ST_Simplify(lowzoom_geom, 1000) as geom, symbol as fname
   FROM {{ table.routes }}
   WHERE level {{ level.IWN_all }} and top and network IS NULL and symbol IS NOT NULL
 {% endcall %}
 
 {% call layer.query('WorldViewShieldsNwn', max=zoom.z9, min=zoom.z10, buffer=512,
                     styles=['worldview-shields']) %}
-  SELECT geom, symbol as fname
+  SELECT ST_Simplify(lowzoom_geom, 1000) as geom, symbol as fname
   FROM {{ table.routes }}
   WHERE level {{ level.NWN_all }} and top and network IS NULL and symbol IS NOT NULL
 {% endcall %}
