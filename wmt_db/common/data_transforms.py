@@ -40,7 +40,7 @@ def make_geometry(conn, members, ways, table):
     geom = build_route_geometry(conn, members, ways, table)
 
     if geom is None:
-        return None
+        return None, None
 
     if geom.geom_type not in ('MultiLineString', 'LineString'):
         raise RuntimeError("Bad geometry %s for %d" % (geom.geom_type, obj['id']))
@@ -50,5 +50,12 @@ def make_geometry(conn, members, ways, table):
         fixed_geom = linemerge(geom)
         if fixed_geom.geom_type == 'LineString':
             geom = fixed_geom
+        lowzoom_geom = fixed_geom
+    else:
+        lowzoom_geom = geom
 
-    return from_shape(geom, srid=table.c.geom.type.srid)
+    lowzoom_geom = lowzoom_geom.simplify(1)
+
+    srid = table.c.geom.type.srid
+
+    return from_shape(geom, srid=srid), from_shape(lowzoom_geom, srid=srid)

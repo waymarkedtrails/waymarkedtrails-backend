@@ -66,6 +66,7 @@ class PisteRoutes(ThreadableDBObject, TableSource):
         table.append_column(sa.Column('top', sa.Boolean))
         _add_piste_columns(table, config.table_name)
         table.append_column(sa.Column('geom', Geometry('GEOMETRY', srid=ways.srid)))
+        table.append_column(sa.Column('lowzoom_geom', Geometry('GEOMETRY', srid=ways.srid)))
 
         super().__init__(table, relations.change)
 
@@ -190,12 +191,13 @@ class PisteRoutes(ThreadableDBObject, TableSource):
         outtags['top'] = True
 
         # geometry
-        geom = make_geometry(conn, obj['members'], self.ways, self.data)
+        geom, lowzoom_geom = make_geometry(conn, obj['members'], self.ways, self.data)
 
         if geom is None:
             return None
 
         outtags['geom'] = geom
+        outtags['lowzoom_geom'] = lowzoom_geom
         outtags['symbol'] = write_symbol(self.shield_fab, tags,
                                          outtags['difficulty'],
                                          self.config.symbol_datadir)

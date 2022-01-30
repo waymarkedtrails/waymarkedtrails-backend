@@ -54,7 +54,8 @@ class Routes(ThreadableDBObject, TableSource):
                          sa.Column('level', sa.SmallInteger),
                          sa.Column('top', sa.Boolean),
                          sa.Column('rel_members', ARRAY(sa.BigInteger)),
-                         sa.Column('geom', Geometry('GEOMETRY', srid=ways.srid)))
+                         sa.Column('geom', Geometry('GEOMETRY', srid=ways.srid)),
+                         sa.Column('lowzoom_geom', Geometry('GEOMETRY', srid=ways.srid)))
 
         super().__init__(table, relations.change)
 
@@ -256,7 +257,7 @@ class Routes(ThreadableDBObject, TableSource):
         outtags.rel_members = relids if relids else None
 
         # geometry
-        geom = make_geometry(conn, members, self.ways, self.data)
+        geom, lowzoom_geom = make_geometry(conn, members, self.ways, self.data)
 
         if geom is None:
             return None
@@ -291,5 +292,6 @@ class Routes(ThreadableDBObject, TableSource):
 
         outtags = dataclasses.asdict(outtags)
         outtags['geom'] = geom
+        outtags['lowzoom_geom'] = lowzoom_geom
 
         return outtags
