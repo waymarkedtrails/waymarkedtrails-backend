@@ -179,5 +179,6 @@
           FROM (SELECT geom, array_cat(lshields, inrshields) as shld
                 FROM {{ table.style }}
                 WHERE lshields is not null or inrshields is not null) x,
-               lateral generate_subscripts(shld, 1) as i order by st_length(geom) desc, i
+               lateral generate_subscripts(shld, 1) as i
+          ORDER BY i, st_length(geom) desc
 {% endcall %}

@@ -9,4 +9,5 @@
   SELECT geom, inrshields[i] as fname, i as numshield
   FROM {{ table.style }}, lateral generate_subscripts(inrshields, 1) as i
   WHERE inrshields is not null
+  ORDER BY i, st_length(geom) desc
 {% endcall %}

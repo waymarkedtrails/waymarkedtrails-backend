@@ -99,14 +99,14 @@
   </Rule>
 </Style>
 
-{% call layer.query('WorldViewShieldsIwn', max=zoom.z7, min=zoom.z10, buffer=512,
+{% call layer.query('WorldViewShieldsIwn', max=zoom.z7, min=zoom.z10, buffer=1024,
                     styles=['worldview-shields']) %}
   SELECT ST_Simplify(lowzoom_geom, 1000) as geom, symbol as fname
   FROM {{ table.routes }}
   WHERE level {{ level.IWN_all }} and top and network IS NULL and symbol IS NOT NULL
 {% endcall %}
 
-{% call layer.query('WorldViewShieldsNwn', max=zoom.z9, min=zoom.z10, buffer=512,
+{% call layer.query('WorldViewShieldsNwn', max=zoom.z9, min=zoom.z10, buffer=1024,
                     styles=['worldview-shields']) %}
   SELECT ST_Simplify(lowzoom_geom, 1000) as geom, symbol as fname
   FROM {{ table.routes }}
