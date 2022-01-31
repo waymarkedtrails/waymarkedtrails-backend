@@ -5,9 +5,16 @@
   </Rule>
 </Style>
 
-{% call layer.query('NetworkSwissLow', min=zoom.z12, max=zoom.z10,
+{% call layer.query('NetworkSwissLow', min=zoom.z11, max=zoom.z10,
                     styles=["network-swiss-low"]) %}
-  SELECT lowzoom_geom as geom FROM {{ table.routes }} WHERE network LIKE 'AL%'
+  SELECT ST_ChaikinSmoothing(ST_Simplify(lowzoom_geom, 200, true)) as geom FROM {{ table.routes }} WHERE network LIKE 'AL%'
+        AND "lowzoom_geom" && !bbox!
+{% endcall %}
+
+{% call layer.query('NetworkSwissLow', min=zoom.z12, max=zoom.z11,
+                    styles=["network-swiss-low"]) %}
+  SELECT ST_ChaikinSmoothing(ST_Simplify(lowzoom_geom, 50, true)) as geom FROM {{ table.routes }} WHERE network LIKE 'AL%'
+        AND "lowzoom_geom" && !bbox!
 {% endcall %}
 {% endif %}
 
@@ -19,9 +26,16 @@
   </Rule>
 </Style>
 
+{% call layer.query('NetworkNodeLow', min=zoom.z11, max=zoom.z10,
+                    styles=["network-node-low"]) %}
+  SELECT ST_ChaikinSmoothing(ST_Simplify(lowzoom_geom, 200, true)) as geom FROM {{ table.routes }} WHERE network = 'NDS'
+        AND "lowzoom_geom" && !bbox!
+{% endcall %}
+
 {% call layer.query('NetworkNodeLow', min=zoom.z12, max=zoom.z11,
                     styles=["network-node-low"]) %}
-  SELECT lowzoom_geom as geom FROM {{ table.routes }} WHERE network = 'NDS'
+  SELECT ST_ChaikinSmoothing(ST_Simplify(lowzoom_geom, 50, true)) as geom FROM {{ table.routes }} WHERE network = 'NDS'
+        AND "lowzoom_geom" && !bbox!
 {% endcall %}
 {% endif %}
 
@@ -63,13 +77,26 @@
   </Rule>
 </Style>
 
-{% call layer.query('CountryView', min=zoom.z12, max=zoom.z10,
+{% call layer.query('CountryView', min=zoom.z11, max=zoom.z10,
                     styles=['countryview-iwn', 'countryview-rwn-lower',
                             'countryview-nwn', 'countryview-rwn']) %}
-  SELECT geom100 as geom,
+  SELECT ST_ChaikinSmoothing(ST_Simplify(geom, 200, true)) as geom,
          {{ level.IWN_class }} > 0 as iwn,
          {{ level.NWN_class }} > 0 as nwn,
          {{ level.RWN_class }} as rwn
   FROM {{ table.style }}
   WHERE (class::bit(28) >> 7)::integer > 0
+        AND "geom" && !bbox!
+{% endcall %}
+
+{% call layer.query('CountryView', min=zoom.z12, max=zoom.z11,
+                    styles=['countryview-iwn', 'countryview-rwn-lower',
+                            'countryview-nwn', 'countryview-rwn']) %}
+  SELECT ST_ChaikinSmoothing(ST_Simplify(geom, 50, true)) as geom,
+         {{ level.IWN_class }} > 0 as iwn,
+         {{ level.NWN_class }} > 0 as nwn,
+         {{ level.RWN_class }} as rwn
+  FROM {{ table.style }}
+  WHERE (class::bit(28) >> 7)::integer > 0
+        AND "geom" && !bbox!
 {% endcall %}

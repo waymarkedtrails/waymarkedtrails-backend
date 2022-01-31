@@ -13,7 +13,9 @@
                     styles=['worldview-high']) %}
   SELECT ST_ChaikinSmoothing(ST_Simplify(lowzoom_geom, 10000)) as geom, level
   FROM {{ table.routes }}
-  WHERE top and level >= {{ level.NWN }} - 3 order by level
+  WHERE top and level >= {{ level.NWN }} - 3
+        and lowzoom_geom && !bbox!
+  ORDER by level
 {% endcall %}
 
 
@@ -34,6 +36,7 @@
   SELECT ST_ChaikinSmoothing(ST_Simplify(lowzoom_geom, 3000)) as geom, level {{ level.IWN_all }} as iwn
   FROM {{ table.routes }}
   WHERE level >= {{ level.NWN }} - 3 and top
+        and lowzoom_geom && !bbox!
   ORDER BY level
 {% endcall %}
 
@@ -42,6 +45,7 @@
   SELECT ST_ChaikinSmoothing(ST_Simplify(lowzoom_geom, 2000)) as geom, level {{ level.IWN_all }} as iwn
   FROM {{ table.routes }}
   WHERE level >= {{ level.NWN }} - 3 and top
+        and lowzoom_geom && !bbox!
   ORDER BY level
 {% endcall %}
 
@@ -50,6 +54,7 @@
   SELECT ST_ChaikinSmoothing(ST_Simplify(lowzoom_geom, 1000)) as geom, level {{ level.IWN_all }} as iwn
   FROM {{ table.routes }}
   WHERE level >= {{ level.NWN }} - 3 and top
+        and lowzoom_geom && !bbox!
   ORDER BY level
 {% endcall %}
 
@@ -83,19 +88,20 @@
 
 {% call layer.query('WorldviewLow', max=zoom.z9, min=zoom.z10,
                     styles=['worldview-low-rwn', 'worldview-low-inwn', 'worldview-low-nwn']) %}
-  SELECT geom100 as geom,
+  SELECT ST_ChaikinSmoothing(ST_Simplify(geom, 500), 1, true) as geom,
          {{ level.IWN_class }} > 0 as iwn,
          {{ level.NWN_class }} > 0 as nwn,
          {{ level.RWN_class }} > 0 as rwn
   FROM {{ table.style }}
   WHERE (class::bit(28) >> 7)::integer > 0
+        and geom && !bbox!
 {% endcall %}
 
 
 
 <Style name="worldview-shields">
   <Rule>
-    {{ style.shield(spacing=400, margin=50, repeat=200) }}
+    {{ style.shield(spacing=400, margin=30, repeat=200) }}
   </Rule>
 </Style>
 
@@ -104,12 +110,21 @@
   SELECT ST_Simplify(lowzoom_geom, 1000) as geom, symbol as fname
   FROM {{ table.routes }}
   WHERE level {{ level.IWN_all }} and top and network IS NULL and symbol IS NOT NULL
+        and lowzoom_geom && !bbox!
 {% endcall %}
 
+<Style name="worldview-shields-low">
+  <Rule>
+    {{ style.shield(spacing=300, margin=30, repeat=100) }}
+  </Rule>
+</Style>
+
+
 {% call layer.query('WorldViewShieldsNwn', max=zoom.z9, min=zoom.z10, buffer=1024,
-                    styles=['worldview-shields']) %}
+                    styles=['worldview-shields-low']) %}
   SELECT ST_Simplify(lowzoom_geom, 1000) as geom, symbol as fname
   FROM {{ table.routes }}
   WHERE level {{ level.NWN_all }} and top and network IS NULL and symbol IS NOT NULL
+        and lowzoom_geom && !bbox!
 {% endcall %}
 
