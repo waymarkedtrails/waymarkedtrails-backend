@@ -92,7 +92,7 @@
 
 {% call layer.query('LocalViewSwiss', max=zoom.z13,
                     styles=['lovalview-swiss']) %}
-  SELECT network, geom FROM {{ table.routes }} WHERE network LIKE 'AL%'
+  SELECT network, lowzoom_geom as geom FROM {{ table.routes }} WHERE network LIKE 'AL%'
 {% endcall %}
 {% endif %}
 

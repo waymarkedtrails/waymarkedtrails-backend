@@ -6,5 +6,5 @@
 
 {% call layer.query('NetworkNodeLow', min=zoom.z12, max=zoom.z11,
                     styles=["network-node-low"]) %}
-  SELECT geom FROM {{ table.routes }} WHERE network = 'NDS'
+  SELECT lowzoom_geom as geom FROM {{ table.routes }} WHERE network = 'NDS'
 {% endcall %}
