@@ -11,10 +11,10 @@
 
 {% call layer.query('WorldviewHigh', min=zoom.z5,
                     styles=['worldview-high']) %}
-  SELECT ST_ChaikinSmoothing(ST_Simplify(lowzoom_geom, 10000)) as geom, level
+  SELECT ST_ChaikinSmoothing(ST_Simplify(render_geom, 10000)) as geom, level
   FROM {{ table.routes }}
   WHERE top and level >= {{ level.NWN }} - 3
-        and lowzoom_geom && !bbox!
+        and render_geom && !bbox!
   ORDER by level
 {% endcall %}
 
@@ -33,28 +33,28 @@
 
 {% call layer.query('WorldviewMid', max=zoom.z5, min=zoom.z7,
                     styles=['worldview-mid']) %}
-  SELECT ST_ChaikinSmoothing(ST_Simplify(lowzoom_geom, 3000)) as geom, level {{ level.IWN_all }} as iwn
+  SELECT ST_ChaikinSmoothing(ST_Simplify(render_geom, 3000)) as geom, level {{ level.IWN_all }} as iwn
   FROM {{ table.routes }}
   WHERE level >= {{ level.NWN }} - 3 and top
-        and lowzoom_geom && !bbox!
+        and render_geom && !bbox!
   ORDER BY level
 {% endcall %}
 
 {% call layer.query('WorldviewMid', max=zoom.z7, min=zoom.z8,
                     styles=['worldview-mid']) %}
-  SELECT ST_ChaikinSmoothing(ST_Simplify(lowzoom_geom, 2000)) as geom, level {{ level.IWN_all }} as iwn
+  SELECT ST_ChaikinSmoothing(ST_Simplify(render_geom, 2000)) as geom, level {{ level.IWN_all }} as iwn
   FROM {{ table.routes }}
   WHERE level >= {{ level.NWN }} - 3 and top
-        and lowzoom_geom && !bbox!
+        and render_geom && !bbox!
   ORDER BY level
 {% endcall %}
 
 {% call layer.query('WorldviewMid', max=zoom.z8, min=zoom.z9,
                     styles=['worldview-mid']) %}
-  SELECT ST_ChaikinSmoothing(ST_Simplify(lowzoom_geom, 1000)) as geom, level {{ level.IWN_all }} as iwn
+  SELECT ST_ChaikinSmoothing(ST_Simplify(render_geom, 1000)) as geom, level {{ level.IWN_all }} as iwn
   FROM {{ table.routes }}
   WHERE level >= {{ level.NWN }} - 3 and top
-        and lowzoom_geom && !bbox!
+        and render_geom && !bbox!
   ORDER BY level
 {% endcall %}
 
@@ -107,10 +107,10 @@
 
 {% call layer.query('WorldViewShieldsIwn', max=zoom.z7, min=zoom.z10, buffer=1024,
                     styles=['worldview-shields']) %}
-  SELECT ST_Simplify(lowzoom_geom, 1000) as geom, symbol as fname
+  SELECT ST_Simplify(render_geom, 1000) as geom, symbol as fname
   FROM {{ table.routes }}
   WHERE level {{ level.IWN_all }} and top and network IS NULL and symbol IS NOT NULL
-        and lowzoom_geom && !bbox!
+        and render_geom && !bbox!
 {% endcall %}
 
 <Style name="worldview-shields-low">
@@ -122,9 +122,9 @@
 
 {% call layer.query('WorldViewShieldsNwn', max=zoom.z9, min=zoom.z10, buffer=1024,
                     styles=['worldview-shields-low']) %}
-  SELECT ST_Simplify(lowzoom_geom, 1000) as geom, symbol as fname
+  SELECT ST_Simplify(render_geom, 1000) as geom, symbol as fname
   FROM {{ table.routes }}
   WHERE level {{ level.NWN_all }} and top and network IS NULL and symbol IS NOT NULL
-        and lowzoom_geom && !bbox!
+        and render_geom && !bbox!
 {% endcall %}
 

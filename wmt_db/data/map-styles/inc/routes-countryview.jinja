@@ -7,14 +7,14 @@
 
 {% call layer.query('NetworkSwissLow', min=zoom.z11, max=zoom.z10,
                     styles=["network-swiss-low"]) %}
-  SELECT ST_ChaikinSmoothing(ST_Simplify(lowzoom_geom, 200, true)) as geom FROM {{ table.routes }} WHERE network LIKE 'AL%'
-        AND "lowzoom_geom" && !bbox!
+  SELECT ST_ChaikinSmoothing(ST_Simplify(render_geom, 200, true)) as geom FROM {{ table.routes }} WHERE network LIKE 'AL%'
+        AND "render_geom" && !bbox!
 {% endcall %}
 
 {% call layer.query('NetworkSwissLow', min=zoom.z12, max=zoom.z11,
                     styles=["network-swiss-low"]) %}
-  SELECT ST_ChaikinSmoothing(ST_Simplify(lowzoom_geom, 50, true)) as geom FROM {{ table.routes }} WHERE network LIKE 'AL%'
-        AND "lowzoom_geom" && !bbox!
+  SELECT ST_ChaikinSmoothing(ST_Simplify(render_geom, 50, true)) as geom FROM {{ table.routes }} WHERE network LIKE 'AL%'
+        AND "render_geom" && !bbox!
 {% endcall %}
 {% endif %}
 
@@ -28,14 +28,14 @@
 
 {% call layer.query('NetworkNodeLow', min=zoom.z11, max=zoom.z10,
                     styles=["network-node-low"]) %}
-  SELECT ST_ChaikinSmoothing(ST_Simplify(lowzoom_geom, 200, true)) as geom FROM {{ table.routes }} WHERE network = 'NDS'
-        AND "lowzoom_geom" && !bbox!
+  SELECT ST_ChaikinSmoothing(ST_Simplify(render_geom, 200, true)) as geom FROM {{ table.routes }} WHERE network = 'NDS'
+        AND "render_geom" && !bbox!
 {% endcall %}
 
 {% call layer.query('NetworkNodeLow', min=zoom.z12, max=zoom.z11,
                     styles=["network-node-low"]) %}
-  SELECT ST_ChaikinSmoothing(ST_Simplify(lowzoom_geom, 50, true)) as geom FROM {{ table.routes }} WHERE network = 'NDS'
-        AND "lowzoom_geom" && !bbox!
+  SELECT ST_ChaikinSmoothing(ST_Simplify(render_geom, 50, true)) as geom FROM {{ table.routes }} WHERE network = 'NDS'
+        AND "render_geom" && !bbox!
 {% endcall %}
 {% endif %}
 

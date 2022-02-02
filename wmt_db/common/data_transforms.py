@@ -50,12 +50,12 @@ def make_geometry(conn, members, ways, table):
         fixed_geom = linemerge(geom)
         if fixed_geom.geom_type == 'LineString':
             geom = fixed_geom
-        lowzoom_geom = fixed_geom
+        render_geom = fixed_geom
     else:
-        lowzoom_geom = geom
+        render_geom = geom
 
-    lowzoom_geom = lowzoom_geom.simplify(1)
+    render_geom = render_geom.simplify(1)
 
     srid = table.c.geom.type.srid
 
-    return from_shape(geom, srid=srid), from_shape(lowzoom_geom, srid=srid)
+    return from_shape(geom, srid=srid), from_shape(render_geom, srid=srid)

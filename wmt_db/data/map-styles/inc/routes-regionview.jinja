@@ -33,7 +33,7 @@
 
 {% call layer.query('RegionViewSwissNetwork', min=zoom.z13, max=zoom.z12,
                     styles=['regionview-swiss']) %}
-  SELECT network, lowzoom_geom as geom FROM {{ table.routes }} WHERE network LIKE 'AL%'
+  SELECT network, render_geom as geom FROM {{ table.routes }} WHERE network LIKE 'AL%'
 {% endcall %}
 {% endif %}
 
@@ -48,7 +48,7 @@
 
 {% call layer.query('RegionViewNodeNetwork', min=zoom.z13, max=zoom.z12,
                     styles=['regionview-nnw']) %}
-  SELECT lowzoom_geom as geom FROM {{ table.routes }} WHERE network = 'NDS'
+  SELECT render_geom as geom FROM {{ table.routes }} WHERE network = 'NDS'
 {% endcall %}
 {% endif %}
 
