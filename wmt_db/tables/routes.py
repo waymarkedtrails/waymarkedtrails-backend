@@ -55,7 +55,8 @@ class Routes(ThreadableDBObject, TableSource):
                          sa.Column('top', sa.Boolean),
                          sa.Column('rel_members', ARRAY(sa.BigInteger)),
                          sa.Column('geom', Geometry('GEOMETRY', srid=ways.srid)),
-                         sa.Column('render_geom', Geometry('GEOMETRY', srid=ways.srid)))
+                         sa.Column('render_geom', Geometry('GEOMETRY', srid=ways.srid,
+                                                           spatial_index=False)))
 
         super().__init__(table, relations.change)
 
@@ -108,16 +109,27 @@ class Routes(ThreadableDBObject, TableSource):
 
 
     def construct(self, engine):
-        idx = sa.Index(self.data.name + '_iname_idx', sa.func.upper(self.data.c.name))
+        indexes = [sa.Index(self.data.name + '_iname_idx', sa.func.upper(self.c.name)),
+                   sa.Index(self.data.name + '_render_geom_idx', self.c.render_geom,
+                            postgresql_using='spgist'),
+                   sa.Index(self.data.name + '_render_geom_lowzoom_idx', self.c.render_geom,
+                            postgresql_where=sa.and_(self.c.level >= 14, self.c.top),
+                            postgresql_using='spgist'),
+                   sa.Index(self.data.name + '_render_geom_network_idx', self.c.render_geom,
+                            postgresql_where=self.c.network != None,
+                            postgresql_using='spgist')]
+
 
         with engine.begin() as conn:
-            conn.execute(DropIndexIfExists(idx))
+            for idx in indexes:
+                conn.execute(DropIndexIfExists(idx))
             self.truncate(conn)
 
         self._insert_objects(engine)
 
         with engine.begin() as conn:
-            idx.create(conn)
+            for idx in indexes:
+                idx.create(conn)
 
     def update(self, engine):
         with engine.begin() as conn:
