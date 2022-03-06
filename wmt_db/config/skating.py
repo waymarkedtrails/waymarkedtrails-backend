@@ -41,5 +41,5 @@ NETWORKNODES.node_tag = 'rin_ref'
 DEFSTYLE = RouteNetworkStyle()
 
 SYMBOLS = WmtConfig()
-SYMBOLS.swiss_mobil_bgcolor = (0.82, 0.63, 0.83)
-SYMBOLS.swiss_mobil_networks = ('national', 'regional')
+SYMBOLS.swiss_mobile_bgcolor = (0.82, 0.63, 0.83)
+SYMBOLS.swiss_mobile_networks = ('national', 'regional')
