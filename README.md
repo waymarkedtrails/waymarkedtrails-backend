@@ -23,12 +23,14 @@ as well as their respective requirements.
 
 Rendering requires [Mapnik](https://mapnik.org/) together with its Python
 bindings. PyCairo >= 1.18 is needed or shields will have the wrong size.
+SQLAlchemy is needed in version 1.4.
 
 On Ubuntu 20.04/Debian 11 the following should install all prerequisits:
 
-    sudo apt install python3-psycopg2 python3-shapely python3-sqlalchemy-ext \
-                     python3-geoalchemy2 python3-gi python3-gi-cairo \
+    sudo apt install python3-psycopg2 python3-shapely \
+                     python3-gi python3-gi-cairo \
                      libcairo2-dev gir1.2-pango-1.0 gir1.2-rsvg-2.0 \
+                     gcc libcairo2-dev pkg-config python3-dev \
                      git python3-jinja2 python3-mapnik
 
 Then install the remaining dependencies in a virtual environment:
@@ -37,6 +39,7 @@ Then install the remaining dependencies in a virtual environment:
     . wmtenv/bin/activate
 
     pip install -U osmium>=3.2.0 PyCairo>=1.18 \
+                   SQLAlchemy>=1.4 GeoAlchemy2>=0.10 \
                    git+https://github.com/waymarkedtrails/osgende@master
                    git+https://github.com/waymarkedtrails/waymarkedtrails-shields@master
 
