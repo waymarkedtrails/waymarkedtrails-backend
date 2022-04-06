@@ -52,7 +52,9 @@ class GuidePosts(TransformedTable):
 
         outtags = dict(name=tags.get('name'), ele=None)
         if 'ele' in tags:
-            outtags['ele'] = tags.get_length('ele', unit='m', default='m')
+            ele = tags.get_length('ele', unit='m', default='m')
+            if ele is not None and ele < 9000:
+                outtags['ele'] = ele
 
         if self.srid == self.src.c.geom.type.srid:
             outtags['geom'] = obj['geom']

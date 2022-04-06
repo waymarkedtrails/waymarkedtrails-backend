@@ -56,6 +56,25 @@ class TestGuidepostTableNoSubtype:
              dict(id=4, name=None, ele=None, geom='POINT(1 1)')
             ])
 
+    def test_ele_out_of_range(self, mapdb, tags):
+        mapdb.insert_into('src')\
+            .line(1, geom='SRID=4326;POINT(12 34)', tags=tags(ele='-3'))\
+            .line(2, geom='SRID=4326;POINT(12 34)', tags=tags(ele='-33'))\
+            .line(3, geom='SRID=4326;POINT(12 34)', tags=tags(ele='8849m'))\
+            .line(4, geom='SRID=4326;POINT(12 34)', tags=tags(ele='29032ft'))\
+            .line(5, geom='SRID=4326;POINT(12 34)', tags=tags(ele='100456'))
+
+        mapdb.construct()
+
+        mapdb.table_equals('test',
+            [dict(id=1, name=None, ele=None, geom='POINT(12 34)'),
+             dict(id=2, name=None, ele=None, geom='POINT(12 34)'),
+             dict(id=3, name=None, ele=8849, geom='POINT(12 34)'),
+             dict(id=4, name=None, ele=8848.9536, geom='POINT(12 34)'),
+             dict(id=5, name=None, ele=None, geom='POINT(12 34)')
+            ])
+
+
 
 class TestGuidepostTableWithSubtype:
 
