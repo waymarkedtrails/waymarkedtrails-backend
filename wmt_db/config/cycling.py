@@ -46,5 +46,5 @@ NETWORKNODES.node_tag = 'rcn_ref'
 DEFSTYLE = RouteNetworkStyle()
 
 SYMBOLS = WmtConfig()
-SYMBOLS.swiss_mobile_bgcolor = (0.66, 0.93, 1.0)
+SYMBOLS.swiss_mobile_bgcolor = (0.47, 0.62, 0.84)
 SYMBOLS.swiss_mobile_networks = ('rcn', 'ncn')
