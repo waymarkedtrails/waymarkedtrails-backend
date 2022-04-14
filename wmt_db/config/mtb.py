@@ -31,7 +31,7 @@ ROUTES.symbols = ('.swiss_mobile',
                   '.ref_color_symbol',
                   '.ref_symbol',
                   '.color_box')
-ROUTES.symbol_datadir = SYMBOL_DIR / 'cycling'
+ROUTES.symbol_datadir = SYMBOL_DIR / 'mtb'
 
 GUIDEPOSTS = GuidePostConfig()
 GUIDEPOSTS.subtype = 'mtb'
