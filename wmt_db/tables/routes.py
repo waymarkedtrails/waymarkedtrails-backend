@@ -200,6 +200,10 @@ class Routes(ThreadableDBObject, TableSource):
         """
         relids = [r['id'] for r in members if r['type'] == 'R']
 
+        if oid in relids:
+            # Relation creates a self-cycle with itself.
+            members = [m for m in members if m['type'] == 'W']
+            relids = []
         if relids:
             # Is this relation part of a cycle? Then drop the relation members
             # to not get us in trouble with geometry building.

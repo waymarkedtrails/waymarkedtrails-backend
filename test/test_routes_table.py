@@ -296,3 +296,35 @@ class TestRoutesTable:
         mapdb.construct()
 
         mapdb.table_equals('test', [])
+
+
+    def test_self_containing_relation(self, mapdb, tags):
+        mapdb.insert_into('ways')\
+            .line(10, rels=[1], nodes=[1,2,3], geom='SRID=4326;LINESTRING(0 0, 0.1 0.1)')\
+            .line(11, rels=[1], nodes=[10,12,13], geom='SRID=4326;LINESTRING(0.11 0.1, 0.2 0.2)')
+
+        my_members = [dict(id=10, role='', type='W'),
+                      dict(id=11, role='', type='W'),
+                      dict(id=1, role='', type='R'),
+                      dict(id=1, role='', type='R')]
+        mapdb.insert_into('src_rels')\
+            .line(1, tags=tags(name='sub'), members=my_members)
+
+        mapdb.construct()
+
+        expected_geometry = 'MULTILINESTRING((0 0, 0.1 0.1), (0.11 0.1, 0.2 0.2))'
+
+        mapdb.table_equals('test', [
+            dict(id=1, name='sub', rel_members=None,
+                 geom=expected_geometry),
+            ])
+
+        mapdb.modify('src_rels')\
+            .modify(1, tags=tags(name='other'), members=my_members)
+
+        mapdb.construct()
+
+        mapdb.table_equals('test', [
+            dict(id=1, name='other', rel_members=None,
+                 geom=expected_geometry),
+            ])
