@@ -16,18 +16,24 @@ To set up the full site, you also need:
 Installation
 ============
 
-The code is written in Python3. You need to first install
+The code is written in Python3. The installation should work on any Linux-like
+system. However, the production servers run on Debian 11, so this is what is
+tested and if you can, you should use this for development/testing as well.
+
+Installing prerequisites
+------------------------
+
+You need to first install
 [osgende](https://github.com/waymarkedtrails/osgende) and
 [waymarkedtrails-shields](https://github.com/waymarkedtrails/waymarkedtrails-shields)
 as well as their respective requirements.
-
 Rendering requires [Mapnik](https://mapnik.org/) together with its Python
 bindings. PyCairo >= 1.18 is needed or shields will have the wrong size.
 SQLAlchemy is needed in version 1.4.
 
-On Ubuntu 20.04/Debian 11 the following should install all prerequisits:
+On Ubuntu 20.04/Debian 11 the following should install all prerequisites:
 
-    sudo apt install python3-psycopg2 python3-shapely \
+    sudo apt install python3-psycopg2 python3-shapely python3-pip \
                      python3-gi python3-gi-cairo \
                      libcairo2-dev gir1.2-pango-1.0 gir1.2-rsvg-2.0 \
                      gcc libcairo2-dev pkg-config python3-dev \
@@ -38,14 +44,37 @@ Then install the remaining dependencies in a virtual environment:
     virtualenv -p python3 --system-site-packages wmtenv
     . wmtenv/bin/activate
 
-    pip install -U osmium>=3.2.0 PyCairo>=1.18 \
-                   SQLAlchemy>=1.4 GeoAlchemy2>=0.10 \
-                   git+https://github.com/waymarkedtrails/osgende@master
+    pip install -U osmium PyCairo \
+                   SQLAlchemy==1.4.48 GeoAlchemy2 \
+                   git+https://github.com/waymarkedtrails/osgende@master \
                    git+https://github.com/waymarkedtrails/waymarkedtrails-shields@master
 
-Finally install the backend:
+Finally, from the root of this repo, run the following to install the backend:
 
     pip install .
+
+
+Setting up PostgreSQL
+---------------------
+
+Next you need to install and set up [PostgreSQL](https://postgresql.org/).
+First install the appropriate packages:
+
+    sudo apt install postgresql-13 postgresql-13-postgis-3
+
+
+This assumes that PostgreSQL comes in version 13 with your system. Adapt
+the number if you are using a different distribution with a different version.
+
+You need two PostgreSQL users for waymarkedtrails: the user that imports and
+updates the data needs superuser database rights. The second user is used for
+serving the data and only get read access to the database. On Debian/Ubuntu
+this should usually be the website user 'www-data'. Create both users
+with:
+
+    sudo -u postgres createuser -s <username>
+    sudo -u postgres createuser www-data
+
 
 Importing a new database
 ------------------------
@@ -129,6 +158,13 @@ updates for each of the parts you have imported:
 wmt-makedb db update
 wmt-makedb hiking update
 ```
+
+
+Where to go from here
+---------------------
+
+To set up the full website stack, continue now with the installation
+instructions for the [API](https://github.com/waymarkedtrails/waymarkedtrails-api).
 
 License
 =======
