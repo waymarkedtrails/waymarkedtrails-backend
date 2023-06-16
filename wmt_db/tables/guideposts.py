@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 #
 # This file is part of the Waymarked Trails Map Project
-# Copyright (C) 2015-2020 Sarah Hoffmann
+# Copyright (C) 2015-2023 Sarah Hoffmann
 """ Tables for guide posts.
 """
 
@@ -32,14 +32,14 @@ class GuidePosts(TransformedTable):
         self.before_update = self._save_added_guideposts
 
     def _save_added_guideposts(self, engine):
-        sql = sa.except_(sa.select([self.src.c.geom.ST_Transform(self.srid)])
+        sql = sa.except_(sa.select(self.src.c.geom.ST_Transform(self.srid))
                            .where(self.src.c.id.in_(self.src.select_add_modify())),
-                         sa.select([self.c.geom])
+                         sa.select(self.c.geom)
                            .where(self.c.id.in_(self.src.select_add_modify())))
         self.updates.add_from_select(engine, sql)
 
     def transform(self, obj):
-        tags = TagStore(obj['tags'])
+        tags = TagStore(obj.tags)
         # filter by subtype
         if self.config.subtype is not None:
             booltags = tags.get_booleans()
@@ -57,8 +57,8 @@ class GuidePosts(TransformedTable):
                 outtags['ele'] = ele
 
         if self.srid == self.src.c.geom.type.srid:
-            outtags['geom'] = obj['geom']
+            outtags['geom'] = obj.geom
         else:
-            outtags['geom'] = obj['geom'].ST_Transform(self.srid)
+            outtags['geom'] = obj.geom.ST_Transform(self.srid)
 
         return outtags

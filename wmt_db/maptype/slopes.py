@@ -2,10 +2,10 @@
 #
 # This file is part of the Waymarked Trails Map Project
 # Copyright (C) 2015 Michael Spreng
-#               2015-2020 Sarah Hoffmann
+#               2015-2023 Sarah Hoffmann
 """ Database for the combinded route/way view (slopes)
 """
-from sqlalchemy import text, select, and_, column
+import sqlalchemy as sa
 
 import osgende
 from osgende.generic import FilteredTable
@@ -29,9 +29,9 @@ class SlopesMapDB(osgende.MapDB):
             schema += '.'
 
         with self.engine.begin() as conn:
-            conn.execute(f"""CREATE OR REPLACE VIEW {schema}data_view AS
-                            (SELECT geom FROM {self.tables.style.data.key}
-                             UNION SELECT geom FROM {self.tables.ways.data.key})""")
+            conn.execute(sa.text(f"""CREATE OR REPLACE VIEW {schema}data_view AS
+                                     (SELECT geom FROM {self.tables.style.data.key}
+                                     UNION SELECT geom FROM {self.tables.ways.data.key})"""))
 
     def mkshield(self):
         route = self.tables.routes
@@ -41,16 +41,16 @@ class SlopesMapDB(osgende.MapDB):
 
         donesyms = set()
         self._write_shields(route,
-                            select([rel.c.tags]).where(rel.c.id == route.data.c.id),
+                            sa.select(rel.c.tags).where(rel.c.id == route.data.c.id),
                             donesyms)
         self._write_shields(sway,
-                            select([way.c.tags]).where(way.c.id == sway.data.c.id),
+                            sa.select(way.c.tags).where(way.c.id == sway.data.c.id),
                             donesyms)
 
     def _write_shields(self, source, subset, donesyms):
         with self.engine.begin() as conn:
             for r in conn.execution_options(stream_results=True).execute(subset):
-                tags = TagStore(r["tags"])
+                tags = TagStore(r.tags)
                 _, difficulty = self.tables.routes.basic_tag_transform(0, tags)
                 sym = source.symbols.create(tags, '', difficulty)
 
@@ -71,8 +71,8 @@ def create_mapdb(site_config, options):
 
     # now create the additional joined ways
     tabname = site_config.DB_TABLES
-    subset = and_(text(site_config.DB_WAY_SUBSET),
-                  column('id').notin_(select([db.tables.relway.c.id])))
+    subset = sa.and_(sa.text(site_config.DB_WAY_SUBSET),
+                     sa.column('id').notin_(sa.select(db.tables.relway.c.id)))
     filt = db.add_table('norelway_filter',
                         FilteredTable(db.metadata, tabname.way_table + '_view',
                                       db.osmdata.way, subset))

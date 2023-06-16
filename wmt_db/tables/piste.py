@@ -2,7 +2,7 @@
 #
 # This file is part of the Waymarked Trails Map Project
 # Copyright (C) 2015 Michael Spreng
-#               2018-2022 Sarah Hoffmann
+#               2018-2023 Sarah Hoffmann
 """ Customized tables for piste routes and ways.
 """
 
@@ -80,11 +80,12 @@ class PisteRoutes(ThreadableDBObject, TableSource):
         self.shield_fab = shield_factory
 
 
-    def _insert_objects(self, conn, subsel=None):
+    def _insert_objects(self, engine, subsel=None):
         h = self.rtree.data
-        max_depth = conn.scalar(sa.select([saf.max(h.c.depth)]))
+        with engine.begin() as conn:
+            max_depth = conn.scalar(sa.select(saf.max(h.c.depth)))
 
-        subtab = sa.select([h.c.child, saf.max(h.c.depth).label("lvl")])\
+        subtab = sa.select(h.c.child, saf.max(h.c.depth).label("lvl"))\
                    .group_by(h.c.child).alias()
 
         # Process relations by hierarchy, starting with the highest depth.
@@ -97,13 +98,13 @@ class PisteRoutes(ThreadableDBObject, TableSource):
                           .where(self.rels.c.id == subtab.c.child)
                 if subsel is not None:
                     subset = subset.where(subsel)
-                self.insert_objects(conn, subset)
+                self.insert_objects(engine, subset)
 
         # Lastly, process all routes that are nobody's child.
         subset = self.rels.data.select()\
                  .where(self.rels.c.id.notin_(
-                     sa.select([h.c.child], distinct=True).scalar_subquery()))
-        self.insert_objects(conn, subset)
+                     sa.select(h.c.child).distinct().scalar_subquery()))
+        self.insert_objects(engine, subset)
 
 
     def construct(self, engine):
@@ -114,9 +115,9 @@ class PisteRoutes(ThreadableDBObject, TableSource):
             conn.execute(DropIndexIfExists(idx))
             self.truncate(conn)
 
-            max_depth = conn.scalar(sa.select([saf.max(h.c.depth)]))
+            max_depth = conn.scalar(sa.select(saf.max(h.c.depth)))
 
-        subtab = sa.select([h.c.child, saf.max(h.c.depth).label("lvl")])\
+        subtab = sa.select(h.c.child, saf.max(h.c.depth).label("lvl"))\
                    .group_by(h.c.child).alias()
 
         # Process relations by hierarchy, starting with the highest depth.
@@ -132,11 +133,10 @@ class PisteRoutes(ThreadableDBObject, TableSource):
         # Lastly, process all routes that are nobody's child.
         subset = self.rels.data.select()\
                  .where(self.rels.c.id.notin_(
-                     sa.select([h.c.child], distinct=True).scalar_subquery()))
+                     sa.select(h.c.child).distinct().scalar_subquery()))
         self.insert_objects(engine, subset)
 
-        with engine.begin() as conn:
-            idx.create(conn)
+        idx.create(engine)
 
     def update(self, engine):
         with engine.begin() as conn:
@@ -144,13 +144,13 @@ class PisteRoutes(ThreadableDBObject, TableSource):
             conn.execute(self.delete(self.rels.select_delete()))
             # collect all changed relations in a temporary table
             # 1. relations added or modified
-            sels = [sa.select([self.rels.cc.id])]
+            sels = [sa.select(self.rels.cc.id)]
             # 2. relations with modified geometries
             w = self.ways
-            sels.append(sa.select([saf.func.unnest(w.c.rels).label('id')], distinct=True)
+            sels.append(sa.select(saf.func.unnest(w.c.rels).label('id')).distinct()
                           .where(w.c.id.in_(w.select_add_modify())))
 
-            conn.execute('DROP TABLE IF EXISTS __tmp_osgende_routes_updaterels')
+            conn.execute(sa.text('DROP TABLE IF EXISTS __tmp_osgende_routes_updaterels'))
             conn.execute(CreateTableAs('__tmp_osgende_routes_updaterels',
                                        sa.union(*sels), temporary=False))
             tmp_rels = sa.Table('__tmp_osgende_routes_updaterels',
@@ -158,20 +158,21 @@ class PisteRoutes(ThreadableDBObject, TableSource):
 
             # 3. parent relation of all of them
             conn.execute(tmp_rels.insert().from_select(tmp_rels.c,
-                sa.select([self.rtree.c.parent], distinct=True)
-                  .where(self.rtree.c.child.in_(sa.select([tmp_rels.c.id])))))
+                sa.select(self.rtree.c.parent).distinct()
+                  .where(self.rtree.c.child.in_(sa.select(tmp_rels.c.id)))))
 
-            # and insert/update all
-            self._insert_objects(conn, self.rels.c.id.in_(tmp_rels.select()))
+        # and insert/update all
+        self._insert_objects(engine, self.rels.c.id.in_(tmp_rels.select()))
 
+        with engine.begin() as conn:
             tmp_rels.drop(conn)
 
     def insert_objects(self, engine, subset):
-        res = engine.execution_options(stream_results=True).execute(subset)
-
         workers = self.create_worker_queue(engine, self._process_construct_next)
-        for obj in res:
-            workers.add_task(obj)
+
+        with engine.execution_options(stream_results=True).begin() as conn:
+            for obj in conn.execute(subset):
+                workers.add_task(obj)
 
         workers.finish()
 
@@ -183,15 +184,15 @@ class PisteRoutes(ThreadableDBObject, TableSource):
             self.thread.conn.execute(self.upsert_data().values(cols))
 
     def _construct_row(self, obj, conn):
-        tags = TagStore(obj['tags'])
+        tags = TagStore(obj.tags)
 
-        outtags = basic_tag_transform(TagStore(obj['tags']), self.config)
+        outtags = basic_tag_transform(TagStore(obj.tags), self.config)
 
         # we don't support hierarchy at the moment
         outtags['top'] = True
 
         # geometry
-        geom, render_geom = make_geometry(conn, obj['members'], self.ways, self.data)
+        geom, render_geom = make_geometry(conn, obj.members, self.ways, self.data)
 
         if geom is None:
             return None
@@ -201,7 +202,7 @@ class PisteRoutes(ThreadableDBObject, TableSource):
         outtags['symbol'] = write_symbol(self.shield_fab, tags,
                                          outtags['difficulty'],
                                          self.config.symbol_datadir)
-        outtags['id'] = obj['id']
+        outtags['id'] = obj.id
 
         return outtags
 
@@ -219,18 +220,18 @@ class PisteWayInfo(PlainWayTable):
 
     def before_update(self, engine):
         # save all old geometries that will be deleted
-        sql = sa.select([self.c.geom])\
+        sql = sa.select(self.c.geom)\
                 .where(self.c.id.in_(self.src.select_delete()))
         self.uptable.add_from_select(engine, sql)
 
     def after_update(self, engine):
         # save all new and modified geometries
-        sql = sa.select([self.c.geom])\
+        sql = sa.select(self.c.geom)\
                 .where(self.c.id.in_(self.src.select_add_modify()))
         self.uptable.add_from_select(engine, sql)
 
     def transform_tags(self, obj):
-        tags = TagStore(obj['tags'])
+        tags = TagStore(obj.tags)
 
         outtags = basic_tag_transform(tags, self.config)
         outtags['symbol'] = write_symbol(self.shield_fab, tags,

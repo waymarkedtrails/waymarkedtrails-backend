@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 #
 # This file is part of Waymarked Trails
-# Copyright (C) 2022 Sarah Hoffmann
+# Copyright (C) 2023 Sarah Hoffmann
 
 import dataclasses
 from typing import Dict, List, Union
@@ -80,11 +80,12 @@ class Routes(ThreadableDBObject, TableSource):
         return Network.LOC()
 
 
-    def _insert_objects(self, conn, subsel=None):
+    def _insert_objects(self, engine, subsel=None):
         h = self.rtree.data
-        max_depth = conn.scalar(sa.select([saf.max(h.c.depth)]))
+        with engine.begin() as conn:
+            max_depth = conn.scalar(sa.select(saf.max(h.c.depth)))
 
-        subtab = sa.select([h.c.child, saf.max(h.c.depth).label("lvl")])\
+        subtab = sa.select(h.c.child, saf.max(h.c.depth).label("lvl"))\
                    .group_by(h.c.child).alias()
 
         # Process relations by hierarchy, starting with the highest depth.
@@ -97,15 +98,15 @@ class Routes(ThreadableDBObject, TableSource):
                           .where(self.rels.c.id == subtab.c.child)
                 if subsel is not None:
                     subset = subset.where(subsel)
-                self.insert_objects(conn, subset)
+                self.insert_objects(engine, subset)
 
         # Lastly, process all routes that are nobody's child.
         subset = self.rels.data.select()\
                  .where(self.rels.c.id.notin_(
-                     sa.select([h.c.child], distinct=True).scalar_subquery()))
+                     sa.select(h.c.child).distinct().scalar_subquery()))
         if subsel is not None:
             subset = subset.where(subsel)
-        self.insert_objects(conn, subset)
+        self.insert_objects(engine, subset)
 
 
     def construct(self, engine):
@@ -127,9 +128,8 @@ class Routes(ThreadableDBObject, TableSource):
 
         self._insert_objects(engine)
 
-        with engine.begin() as conn:
-            for idx in indexes:
-                idx.create(conn)
+        for idx in indexes:
+            idx.create(engine)
 
     def update(self, engine):
         with engine.begin() as conn:
@@ -141,13 +141,13 @@ class Routes(ThreadableDBObject, TableSource):
                    free_rels.update(res[0])
             # collect all changed relations in a temporary table
             # 1. relations added or modified
-            sels = [sa.select([self.rels.cc.id])]
+            sels = [sa.select(self.rels.cc.id)]
             # 2. relations with modified geometries
             w = self.ways
-            sels.append(sa.select([saf.func.unnest(w.c.rels).label('id')], distinct=True)
+            sels.append(sa.select(saf.func.unnest(w.c.rels).label('id')).distinct()
                           .where(w.c.id.in_(w.select_add_modify())))
 
-            conn.execute('DROP TABLE IF EXISTS __tmp_osgende_routes_updaterels')
+            conn.execute(sa.text('DROP TABLE IF EXISTS __tmp_osgende_routes_updaterels'))
             conn.execute(CreateTableAs('__tmp_osgende_routes_updaterels',
                                        sa.union(*sels), temporary=False))
             tmp_rels = sa.Table('__tmp_osgende_routes_updaterels',
@@ -155,32 +155,33 @@ class Routes(ThreadableDBObject, TableSource):
 
             # 3. parent relation of all of them
             conn.execute(tmp_rels.insert().from_select(tmp_rels.c,
-                sa.select([self.rtree.c.parent], distinct=True)
-                  .where(self.rtree.c.child.in_(sa.select([tmp_rels.c.id])))))
+                sa.select(self.rtree.c.parent).distinct()
+                  .where(self.rtree.c.child.in_(sa.select(tmp_rels.c.id)))))
             # 4. Child relations of added and modified relations, old and new.
             #    Their top might need fixing.
-            sels = [sa.select([saf.func.unnest(self.c.rel_members)])\
+            sels = [sa.select(saf.func.unnest(self.c.rel_members))\
                       .where(self.c.id.in_(self.rels.select_add_modify()))]
-            elem = sa.select([sa.func.jsonb_array_elements(self.rels.c.members, type_=JSONB).label('ele')])\
+            elem = sa.select(sa.func.jsonb_array_elements(self.rels.c.members, type_=JSONB).label('ele'))\
                      .where(self.rels.c.id.in_(self.rels.select_add_modify()))\
                      .alias()
-            sels.append(sa.select([sa.cast(elem.c.ele['id'].as_string(), sa.BigInteger)]))
+            sels.append(sa.select(sa.cast(elem.c.ele['id'].as_string(), sa.BigInteger)))
             conn.execute(tmp_rels.insert().from_select(tmp_rels.c, sa.union(*sels)))
             # 5. Relation whose parent was deleted. (top might need fixing)
             if free_rels:
                 conn.execute(tmp_rels.insert().values([{'id': x} for x in free_rels]))
 
-            # and insert/update all
-            self._insert_objects(conn, self.rels.c.id.in_(tmp_rels.select().distinct()))
+        # and insert/update all
+        self._insert_objects(engine, self.rels.c.id.in_(tmp_rels.select().distinct()))
 
+        with engine.begin() as conn:
             tmp_rels.drop(conn)
 
     def insert_objects(self, engine, subset):
-        res = engine.execution_options(stream_results=True).execute(subset)
-
         workers = self.create_worker_queue(engine, self._process_construct_next)
-        for obj in res:
-            workers.add_task(obj)
+
+        with engine.execution_options(stream_results=True).begin() as conn:
+            for obj in conn.execute(subset):
+                workers.add_task(obj)
 
         workers.finish()
 
@@ -192,7 +193,7 @@ class Routes(ThreadableDBObject, TableSource):
             sql = self.upsert_data().values(cols)
             self.thread.conn.execute(sql)
         else:
-            self.thread.conn.execute(self.data.delete().where(self.c.id == obj['id']))
+            self.thread.conn.execute(self.data.delete().where(self.c.id == obj.id))
 
     def _filter_members(self, oid, members):
         """ Extract relation members and checks and breaks relation
@@ -209,7 +210,7 @@ class Routes(ThreadableDBObject, TableSource):
             # to not get us in trouble with geometry building.
             h1 = self.rtree.data.alias()
             h2 = self.rtree.data.alias()
-            sql = sa.select([h1.c.parent])\
+            sql = sa.select(h1.c.parent)\
                     .where(h1.c.parent == oid)\
                     .where(h1.c.child == h2.c.parent)\
                     .where(h2.c.child == oid)
@@ -231,11 +232,11 @@ class Routes(ThreadableDBObject, TableSource):
 
     def _find_country(self, relids, geom):
         if relids:
-            sel = sa.select([self.c.country], distinct=True)\
+            sel = sa.select(self.c.country).distinct()\
                     .where(self.c.id.in_(relids))
         else:
             c = self.countries
-            sel = sa.select([c.column_cc()], distinct=True)\
+            sel = sa.select(c.column_cc()).distinct()\
                     .where(c.column_geom().ST_Intersects(geom))
 
         cur = self.thread.conn.execute(sel)
@@ -248,11 +249,11 @@ class Routes(ThreadableDBObject, TableSource):
 
 
     def _construct_row(self, obj, conn):
-        tags = TagStore(obj['tags'])
+        tags = TagStore(obj.tags)
         is_node_network = tags.get('network:type') == 'node_network'
 
         outtags = RouteRow(
-            id=obj['id'],
+            id=obj.id,
             name=tags.get('name'),
             ref=tags.get('ref'),
             intnames=tags.get_prefixed('name:'),
@@ -268,7 +269,7 @@ class Routes(ThreadableDBObject, TableSource):
             outtags.level = self._compute_route_level(tags['network'])
 
         # child relations
-        members, relids = self._filter_members(obj['id'], obj['members'])
+        members, relids = self._filter_members(obj.id, obj.members)
 
         outtags.rel_members = relids if relids else None
 
@@ -295,8 +296,8 @@ class Routes(ThreadableDBObject, TableSource):
         if 'network' in tags and not is_node_network:
             h = self.rtree.data
             r = self.rels.data
-            sel = sa.select([sa.text("'a'")])\
-                    .where(h.c.child == obj['id'])\
+            sel = sa.select(sa.text("'a'"))\
+                    .where(h.c.child == obj.id)\
                     .where(r.c.id == h.c.parent)\
                     .where(h.c.depth == 2)\
                     .where(r.c.tags['network'].astext == tags['network'])\

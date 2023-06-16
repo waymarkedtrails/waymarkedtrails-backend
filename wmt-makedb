@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 #
 # This file is part of the Waymarked Trails Map Project
-# Copyright (C) 2011-2022 Sarah Hoffmann
+# Copyright (C) 2011-2023 Sarah Hoffmann
 """
 Create, import and modify tables for a route map.
 """
@@ -41,9 +41,9 @@ class BaseDb:
     def prepare(self):
         """ Creates the necessary indices on a new DB."""
         with self.engine.begin() as conn:
-            conn.execute("CREATE INDEX idx_node_changeset on node_changeset(id)")
-            conn.execute("ANALYSE")
-            conn.execute("CREATE EXTENSION pg_trgm")
+            conn.execute(sa.text("CREATE INDEX idx_node_changeset on node_changeset(id)"))
+            conn.execute(sa.text("ANALYSE"))
+            conn.execute(sa.text("CREATE EXTENSION pg_trgm"))
 
         return 0
 

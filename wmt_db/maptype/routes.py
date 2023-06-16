@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: GPL-3.0-only
 #
 # This file is part of the Waymarked Trails Map Project
-# Copyright (C) 2018-2020 Sarah Hoffmann
+# Copyright (C) 2018-2023 Sarah Hoffmann
 
 """ Database for the classic route view (hiking, cycling, etc.)
 """
 import types
 
-from sqlalchemy import MetaData, select, text, Index
+import sqlalchemy as sa
 
 import osgende
 from osgende.generic import FilteredTable
@@ -43,20 +43,20 @@ class RouteMapDB(osgende.MapDB):
             sql += f" UNION SELECT geom FROM {self.tables.guideposts.data.key}"
 
         with self.engine.begin() as conn:
-            conn.execute(f"CREATE OR REPLACE VIEW {schema}data_view AS {sql}")
+            conn.execute(sa.text(f"CREATE OR REPLACE VIEW {schema}data_view AS {sql}"))
 
     def mkshield(self):
         route = self.tables.routes
         rel = self.osmdata.relation.data
-        sel = select([rel.c.tags, route.data.c.country, route.data.c.level])\
+        sel = sa.select(rel.c.tags, route.data.c.country, route.data.c.level)\
                 .where(rel.c.id == route.data.c.id)
 
         donesyms = set()
 
         with self.engine.begin() as conn:
             for r in conn.execution_options(stream_results=True).execute(sel):
-                sym = route.symbols.create(TagStore(r["tags"]), r["country"],
-                                           style=Network.from_int(r["level"]).name)
+                sym = route.symbols.create(TagStore(r.tags), r.country,
+                                           style=Network.from_int(r.level).name)
 
                 if sym is not None:
                     symid = sym.uuid()
@@ -76,17 +76,15 @@ def create_mapdb(site_config, options):
 
 
 def _filtered_table_index(tab, engine):
-    with engine.begin() as conn:
-        Index('idx_filtered_relations_members', tab.c.members,
-              postgresql_using='gin').create(conn)
+    sa.Index('idx_filtered_relations_members', tab.c.members,
+             postgresql_using='gin').create(engine)
 
 def _segments_table_index(tab, engine):
-    with engine.begin() as conn:
-        Index('idx_segment_rels', tab.c.rels, postgresql_using='gin').create(conn)
+    sa.Index('idx_segment_rels', tab.c.rels, postgresql_using='gin').create(engine)
 
 def setup_tables(db, route_class=Routes):
     if not db.get_option('no_engine'):
-        country = CountryGrid(MetaData(), db.site_config.DB_TABLES.country)
+        country = CountryGrid(sa.MetaData(), db.site_config.DB_TABLES.country)
         if not country.data.exists(db.engine):
             raise RuntimeError("No country table found.")
 
@@ -103,7 +101,7 @@ def setup_tables(db, route_class=Routes):
     rfilt = db.add_table('relfilter',
                          FilteredTable(db.metadata, tabname.route_filter,
                                        db.osmdata.relation,
-                                       text(f"({db.site_config.DB_ROUTE_SUBSET})")))
+                                       sa.literal_column(f"({db.site_config.DB_ROUTE_SUBSET})")))
     rfilt.after_construct = types.MethodType(_filtered_table_index, rfilt)
 
     # Then we create the connection between ways and relations.
@@ -125,7 +123,7 @@ def setup_tables(db, route_class=Routes):
     # routes table: information about each route
     routes = db.add_table('routes',
                           route_class(db.metadata, rfilt, relway, rtree,
-                                      CountryGrid(MetaData(), tabname.country),
+                                      CountryGrid(sa.MetaData(), tabname.country),
                                       db.site_config.ROUTES,
                                       ShieldFactory(db.site_config.ROUTES.symbols,
                                                     db.site_config.SYMBOLS)))
@@ -140,21 +138,21 @@ def setup_tables(db, route_class=Routes):
         cfg = db.site_config.GUIDEPOSTS
         filt = db.add_table('gp_filter',
                    FilteredTable(db.metadata, cfg.table_name + '_view',
-                                 db.osmdata.node, text(cfg.node_subset),
+                                 db.osmdata.node, sa.text(cfg.node_subset),
                                  view_only=True))
         db.add_table('guideposts', GuidePosts(db.metadata, filt, cfg))\
            .set_update_table(uptable)
 
         def _add_index(tab, engine):
             with engine.begin() as conn:
-                res = conn.scalar("""SELECT count(*) FROM pg_indexes
-                                     WHERE tablename = 'nodes'
-                                     AND indexname = 'idx_nodes_guidepost'""")
+                res = conn.scalar(sa.text("""SELECT count(*) FROM pg_indexes
+                                             WHERE tablename = 'nodes'
+                                             AND indexname = 'idx_nodes_guidepost'"""))
                 if res == 0:
                     tc = db.osmdata.node.c
                     where= 'tags @> \'{"tourism": "information", "information": "guidepost"}\'::jsonb'
-                    Index(f'idx_nodes_guidepost', tc.id,
-                          postgresql_where=text(where)).create(conn)
+                    sa.Index(f'idx_nodes_guidepost', tc.id,
+                             postgresql_where=sa.text(where)).create(engine)
 
         filt.after_construct = types.MethodType(_add_index, filt)
 
@@ -172,7 +170,7 @@ def setup_tables(db, route_class=Routes):
             with engine.begin() as conn:
                 tc = db.osmdata.node.c
                 tag = db.site_config.NETWORKNODES.node_tag
-                Index(f'idx_nodes_{tag}', tc.id,
-                      postgresql_where=tc.tags.has_key(tag)).create(conn)
+                sa.Index(f'idx_nodes_{tag}', tc.id,
+                         postgresql_where=tc.tags.has_key(tag)).create(engine)
 
         filt.after_construct = types.MethodType(_add_index, filt)

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 #
 # This file is part of the Waymarked Trails Map Project
-# Copyright (C) 2011-2020 Sarah Hoffmann
+# Copyright (C) 2011-2023 Sarah Hoffmann
 """
 Tables to trace updates
 """
@@ -22,8 +22,9 @@ class UpdatedGeometriesTable:
         self.data = Table(name, meta,
                           Column('geom', Geometry('GEOMETRY', srid=srid)))
 
-    def clear(self, conn):
-        conn.execute(self.data.delete())
+    def clear(self, engine):
+        with engine.begin() as conn:
+            conn.execute(self.data.delete())
 
     def create(self, engine):
         self.data.create(bind=engine, checkfirst=True)
@@ -37,5 +38,6 @@ class UpdatedGeometriesTable:
     def add(self, conn, geom):
         conn.execute(self.data.insert().values(geom=geom))
 
-    def add_from_select(self, conn, stm):
-        conn.execute(self.data.insert().from_select(self.data.c, stm))
+    def add_from_select(self, engine, stm):
+        with engine.begin() as conn:
+            conn.execute(self.data.insert().from_select(self.data.c, stm))

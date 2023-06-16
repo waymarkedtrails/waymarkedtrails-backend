@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 #
 # This file is part of the Waymarked Trails Map Project
-# Copyright (C) 2020 Sarah Hoffmann
+# Copyright (C) 2020-2023 Sarah Hoffmann
 
 import os
 
@@ -87,8 +87,8 @@ class TestableMapDB(osgende.mapdb.MapDB):
                 for exp in todo:
                     assert isinstance(exp, dict), "Expected data has wrong format."
                     for column, content in exp.items():
-                        assert column in row, f"Column missing in table {table.name}."
-                        if not DBValue(row[column], table.c[column].type) == content:
+                        assert column in row._fields, f"Column missing in table {table.name}."
+                        if not DBValue(row._mapping[column], table.c[column].type) == content:
                             break
                     else:
                         todo.remove(exp)
@@ -105,7 +105,7 @@ def mapdb():
     assert os.system('createdb ' + Options.database) == 0
     db = TestableMapDB(Options)
     with db.engine.begin() as conn:
-        conn.execute("CREATE EXTENSION postgis")
+        conn.execute(sa.text("CREATE EXTENSION postgis"))
 
     yield db
     db.engine.dispose()
