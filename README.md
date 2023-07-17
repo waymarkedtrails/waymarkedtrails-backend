@@ -90,8 +90,10 @@ create such a file create first a directory `wmt_local_config` and then
 create a file `backend.py`. See `wmt_db/config/common.py` for possible settings.
 In particular you might want to set:
 
- * `DB_NODESTORE` to enable storage of node locations in an external file.
-   Point to the file to use.
+ * `DB_NODESTORE` to enable storage of node locations in an external file
+   instead of the database. Point to the file to use.
+   This saves a large amount of space for larger
+   installation (Europe, planet etc.). Plan about 90GB for the file.
  * `SYMBOL_DIR` is the directory where shield graphics are stored. Must be
    a `pathlib.Path` object.
 
