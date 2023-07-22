@@ -73,8 +73,9 @@ class BaseDb:
 
     def _is_base_map_update_needed(self):
         status = StatusManager(sa.MetaData())
-        basemap_seq = status.get_sequence(self.engine, 'base')
-        oldest = status.get_min_sequence(self.engine)
+        with self.engine.begin() as conn:
+            basemap_seq = status.get_sequence(conn, 'base')
+            oldest = status.get_min_sequence(conn)
 
         return basemap_seq <= oldest
 
