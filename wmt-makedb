@@ -120,7 +120,8 @@ class MapStyleDb(object):
 
     def construct(self):
         # make sure to delete traces of previous imports
-        self.mapdb.status.remove_status(self.mapdb.engine, self.mapname)
+        with self.mapdb.engine.begin() as conn:
+            self.mapdb.status.remove_status(conn, self.mapname)
 
         self.mapdb.construct()
         self._finalize(False)
@@ -165,7 +166,8 @@ class MapStyleDb(object):
         print(env.get_template(f'{self.mapdb.site_config.MAPTYPE}.xml.jinja').render())
 
     def _finalize(self, dovacuum):
-        self.mapdb.status.set_status_from(self.mapdb.engine, self.mapname, 'base')
+        with self.mapdb.engine.begin() as conn:
+            self.mapdb.status.set_status_from(conn, self.mapname, 'base')
         self.mapdb.finalize(dovacuum)
 
 

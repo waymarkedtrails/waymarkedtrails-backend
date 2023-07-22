@@ -40,19 +40,19 @@ class RouteNetworkStyle:
                 'cldrels' : [] }
 
     def add_to_collector(self, c, relinfo):
-        if relinfo['top']:
-            c['toprels'].append(relinfo['id'])
+        if relinfo.top:
+            c['toprels'].append(relinfo.id)
 
-            if relinfo['network'] is None:
-                c['class'] |= 1 << relinfo['level']
+            if relinfo.network is None:
+                c['class'] |= 1 << relinfo.level
                 self.add_shield_to_collector(c, relinfo)
             else:
-                c['style'] = relinfo['network']
-                if relinfo['network'] != 'NDS':
-                    c['class'] |= 1 << relinfo['level']
+                c['style'] = relinfo.network
+                if relinfo.network != 'NDS':
+                    c['class'] |= 1 << relinfo.level
                     self.add_shield_to_collector(c, relinfo)
         else:
-            c['cldrels'].append(relinfo['id'])
+            c['cldrels'].append(relinfo.id)
 
     def to_columns(self, c):
         c['lshields'] = list(c['lshields'])[:5] if c['lshields'] else None
@@ -61,10 +61,10 @@ class RouteNetworkStyle:
         return c
 
     def add_shield_to_collector(self, c, relinfo):
-        if relinfo['symbol']  is None:
+        if relinfo.symbol  is None:
             return
 
-        if relinfo['level'] <= Network.LOC.max():
-            c['lshields'].add(relinfo['symbol'])
+        if relinfo.level <= Network.LOC.max():
+            c['lshields'].add(relinfo.symbol)
         else:
-            c['inrshields'].add(relinfo['symbol'])
+            c['inrshields'].add(relinfo.symbol)

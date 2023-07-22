@@ -84,8 +84,8 @@ def _segments_table_index(tab, engine):
 
 def setup_tables(db, route_class=Routes):
     if not db.get_option('no_engine'):
-        country = CountryGrid(sa.MetaData(), db.site_config.DB_TABLES.country)
-        if not country.data.exists(db.engine):
+        insp = sa.inspect(db.engine)
+        if not insp.has_table(db.site_config.DB_TABLES.country):
             raise RuntimeError("No country table found.")
 
     db.set_metadata('srid', db.site_config.DB_SRID)
