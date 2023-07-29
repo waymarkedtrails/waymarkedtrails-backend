@@ -37,7 +37,7 @@ On Ubuntu 20.04/Debian 11 the following should install all prerequisites:
                      python3-gi python3-gi-cairo \
                      libcairo2-dev gir1.2-pango-1.0 gir1.2-rsvg-2.0 \
                      gcc libcairo2-dev pkg-config python3-dev \
-                     git python3-jinja2 python3-mapnik
+                     git python3-jinja2 python3-mapnik python3-virtualenv
 
 Then install the remaining dependencies in a virtual environment:
 
@@ -91,7 +91,7 @@ create a file `backend.py`. See `wmt_db/config/common.py` for possible settings.
 In particular you might want to set:
 
  * `DB_NODESTORE` to enable storage of node locations in an external file
-   instead of the database. Point to the file to use.
+   instead of the database. Point to the file to use, must be a python `str`.
    This saves a large amount of space for larger
    installation (Europe, planet etc.). Plan about 90GB for the file.
  * `SYMBOL_DIR` is the directory where shield graphics are stored. Must be
