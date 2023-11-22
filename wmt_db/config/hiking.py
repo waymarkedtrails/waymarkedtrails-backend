@@ -38,11 +38,11 @@ def filter_route_tags(outtags, tags):
     # find Swiss hiking network
     if outtags.country == 'ch' and network == 'lwn':
         ot = tags.get('osmc:symbol', '')
-        if ot.startswith('yellow:'):
+        if ot.startswith('yellow:') and ot.endswith(':yellow_diamond'):
             outtags.network = 'AL1'
-        elif ot.startswith('red:'):
+        elif ot == 'red:white:red_bar':
             outtags.network = 'AL2'
-        elif ot.startswith('blue:'):
+        elif ot == 'blue:white:blue_bar':
             outtags.network = 'AL4'
 
     # Italian hiking network (see #266), also uses Swiss system
