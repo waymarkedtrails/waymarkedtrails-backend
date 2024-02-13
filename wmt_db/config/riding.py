@@ -33,6 +33,7 @@ ROUTES.network_map = {
         'lcn': Network.LOC(0),
         }
 ROUTES.symbols = ('.osmc_symbol',
+                  '.wiki_symbol',
                   '.ref_symbol',
                   '.color_box')
 ROUTES.symbol_datadir = SYMBOL_DIR / 'riding'
