@@ -23,6 +23,7 @@ from ..tables.guideposts import GuidePosts
 from ..tables.networknodes import NetworkNodes
 from ..tables.updates import UpdatedGeometriesTable
 from ..tables.styles import StyleTable
+from ..tables.route_ways import RouteWayTable
 
 class RouteMapDB(osgende.MapDB):
     """ MapDB for standard route-relation-based activities. Adds special
@@ -107,8 +108,8 @@ def setup_tables(db, route_class=Routes):
     # Then we create the connection between ways and relations.
     # This also adds geometries.
     relway = db.add_table('relway',
-                          RelationWayTable(db.metadata, tabname.way_relation,
-                                           db.osmdata.way, rfilt, osmdata=db.osmdata))
+                          RouteWayTable(db.metadata, tabname.way_relation,
+                                        db.osmdata.way, rfilt, osmdata=db.osmdata))
 
     # From that create the segmented table.
     segments = db.add_table('segments',
