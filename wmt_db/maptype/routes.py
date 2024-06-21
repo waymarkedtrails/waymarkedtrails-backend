@@ -145,15 +145,10 @@ def setup_tables(db, route_class=Routes):
            .set_update_table(uptable)
 
         def _add_index(tab, engine):
-            with engine.begin() as conn:
-                res = conn.scalar(sa.text("""SELECT count(*) FROM pg_indexes
-                                             WHERE tablename = 'nodes'
-                                             AND indexname = 'idx_nodes_guidepost'"""))
-                if res == 0:
-                    tc = db.osmdata.node.c
-                    where= 'tags @> \'{"tourism": "information", "information": "guidepost"}\'::jsonb'
-                    sa.Index(f'idx_nodes_guidepost', tc.id,
-                             postgresql_where=sa.text(where)).create(engine)
+            tc = db.osmdata.node.c
+            where= 'tags @> \'{"tourism": "information", "information": "guidepost"}\'::jsonb'
+            sa.Index(f'idx_nodes_guidepost', tc.id,
+                     postgresql_where=sa.text(where)).create(engine, checkfirst=True)
 
         filt.after_construct = types.MethodType(_add_index, filt)
 
@@ -168,10 +163,9 @@ def setup_tables(db, route_class=Routes):
         db.add_table('networknodes', NetworkNodes(db.metadata, filt, cfg))
 
         def _add_index(tab, engine):
-            with engine.begin() as conn:
-                tc = db.osmdata.node.c
-                tag = db.site_config.NETWORKNODES.node_tag
-                sa.Index(f'idx_nodes_{tag}', tc.id,
-                         postgresql_where=tc.tags.has_key(tag)).create(engine)
+            tc = db.osmdata.node.c
+            tag = db.site_config.NETWORKNODES.node_tag
+            sa.Index(f'idx_nodes_{tag}', tc.id,
+                     postgresql_where=tc.tags.has_key(tag)).create(engine, checkfirst=True)
 
         filt.after_construct = types.MethodType(_add_index, filt)
