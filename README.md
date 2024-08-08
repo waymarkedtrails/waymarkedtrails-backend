@@ -17,8 +17,9 @@ Installation
 ============
 
 The code is written in Python3. The installation should work on any Linux-like
-system. However, the production servers run on Debian 11, so this is what is
-tested and if you can, you should use this for development/testing as well.
+system. However, the production servers run on Debian 12, so this is what is
+tested. If possible, use this for development/testing as well. Alternatively
+install all Python dependencies via pip.
 
 Installing prerequisites
 ------------------------
@@ -29,9 +30,9 @@ You need to first install
 as well as their respective requirements.
 Rendering requires [Mapnik](https://mapnik.org/) together with its Python
 bindings. PyCairo >= 1.18 is needed or shields will have the wrong size.
-SQLAlchemy is needed in version 1.4.
+SQLAlchemy is needed in version 2.0+.
 
-On Ubuntu 20.04/Debian 11 the following should install all prerequisites:
+On Ubuntu 24.04/Debian 12 the following should install all prerequisites:
 
     sudo apt install python3-psycopg2 python3-shapely python3-pip \
                      python3-gi python3-gi-cairo \
@@ -45,7 +46,7 @@ Then install the remaining dependencies in a virtual environment:
     . wmtenv/bin/activate
 
     pip install -U osmium PyCairo \
-                   SQLAlchemy==1.4.48 GeoAlchemy2 \
+                   SQLAlchemy GeoAlchemy2 \
                    git+https://github.com/waymarkedtrails/osgende@master \
                    git+https://github.com/waymarkedtrails/waymarkedtrails-shields@master
 
@@ -60,11 +61,8 @@ Setting up PostgreSQL
 Next you need to install and set up [PostgreSQL](https://postgresql.org/).
 First install the appropriate packages:
 
-    sudo apt install postgresql-13 postgresql-13-postgis-3
+    sudo apt install postgresql postgresql-postgis
 
-
-This assumes that PostgreSQL comes in version 13 with your system. Adapt
-the number if you are using a different distribution with a different version.
 
 You need two PostgreSQL users for waymarkedtrails: the user that imports and
 updates the data needs superuser database rights. The second user is used for
