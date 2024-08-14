@@ -11,6 +11,9 @@ from wmt_shields.wmt_config import WmtConfig
 from .common import *
 
 CAI_LEVEL = {'T' : '1', 'E' : '2', 'EE' : '3'}
+VORARLBERG_SYMBOL = {'yellow:white:yellow_upper': 'AL1',
+                     'red:white:red_bar': 'AL2',
+                     'blue:white:blue_bar': 'AL3'}
 
 def filter_route_tags(outtags, tags):
     """ Additional tag filtering specifically for hiking routes.
@@ -44,6 +47,9 @@ def filter_route_tags(outtags, tags):
             outtags.network = 'AL2'
         elif ot == 'blue:white:blue_bar':
             outtags.network = 'AL4'
+    if tags.get('operator', '') == 'Land Vorarlberg' and network == 'rwn':
+        if (nw := VORARLBERG_SYMBOL.get(tags.get('osmc:symbol', ''))) is not None:
+            outtags.network = nw
 
     # Italian hiking network (see #266), also uses Swiss system
     if outtags.country == 'it' and network == 'lwn' \
