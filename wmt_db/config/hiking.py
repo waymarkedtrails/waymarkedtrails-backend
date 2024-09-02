@@ -73,7 +73,7 @@ def hiking_add_to_collector(self, c, relinfo):
         else:
             c['style'] = relinfo.network
             if relinfo.network.startswith('AL'):
-                if relinfo.country != 'ch':
+                if relinfo.country not in ('ch', 'at'):
                     self.add_shield_to_collector(c, relinfo)
             elif relinfo.network == 'NDS':
                 pass # no shields, no coloring
