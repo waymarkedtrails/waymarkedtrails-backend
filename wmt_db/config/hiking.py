@@ -47,7 +47,9 @@ def filter_route_tags(outtags, tags):
             outtags.network = 'AL2'
         elif ot == 'blue:white:blue_bar':
             outtags.network = 'AL4'
-    if tags.get('operator', '') == 'Land Vorarlberg' and network == 'rwn':
+    if tags.get('operator', '') == 'Land Vorarlberg'\
+       and network == 'rwn'\
+       and tags.get('network:type', 'basic_network'):
         if (nw := VORARLBERG_SYMBOL.get(tags.get('osmc:symbol', ''))) is not None:
             outtags.network = nw
 
