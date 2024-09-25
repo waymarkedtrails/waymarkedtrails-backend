@@ -13,7 +13,7 @@ from .common import *
 CAI_LEVEL = {'T' : '1', 'E' : '2', 'EE' : '3'}
 VORARLBERG_SYMBOL = {'yellow:white:yellow_upper': 'AL1',
                      'red:white:red_bar': 'AL2',
-                     'blue:white:blue_bar': 'AL3'}
+                     'blue:white:blue_bar': 'AL4'}
 
 def filter_route_tags(outtags, tags):
     """ Additional tag filtering specifically for hiking routes.
