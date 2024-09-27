@@ -106,6 +106,7 @@ ROUTES.network_map = {
         }
 ROUTES.tag_filter = filter_route_tags
 ROUTES.symbols = ('.image_symbol',
+                  '.wiki_symbol',
                   '.swiss_mobile',
                   '.jel_symbol',
                   '.kct_symbol',
