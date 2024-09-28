@@ -30,6 +30,7 @@ ROUTES.symbols = ('.swiss_mobile',
                   '.jel_symbol',
                   '.ref_color_symbol',
                   '.ref_symbol',
+                  '.osmc_symbol',
                   '.color_box')
 ROUTES.symbol_datadir = SYMBOL_DIR / 'mtb'
 
