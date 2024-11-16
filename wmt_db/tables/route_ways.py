@@ -18,3 +18,9 @@ class RouteWayTable(RelationWayTable):
         geom = sgeom.LineString(points)
 
         return geom if geom.length < 500000 else None
+
+    def add_columns(self, table):
+        table.append_column(sa.Column('tags', JSONB))
+
+    def transform_tags(self, oid, tags):
+        return {'tags': tags}
