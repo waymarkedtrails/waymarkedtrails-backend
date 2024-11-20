@@ -26,19 +26,19 @@ def build_route(members: list[rt.BaseWay | rt.RouteSegment]) -> rt.RouteSegment:
     mains = []
     alternatives = []
     appendices = []
-    for i, m in enumerate(members):
+    for m in members:
         match m.role:
             case '':
                 mains.append(m)
             case 'alternative' | 'detour' | 'alternate' | 'alternate_route' | 'variant':
-                alternatives.append((i, m))
+                alternatives.append(m)
             case _:
-                appendices.append((i, m))
+                appendices.append(m)
 
     _flip_order(mains)
 
     return rt.RouteSegment(length=sum(seg.length for seg in mains),
-                           main=mains, appendices=[a[1] for a in appendices])
+                           main=mains, appendices=appendices)
 
 
 

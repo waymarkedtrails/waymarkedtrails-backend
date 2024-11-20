@@ -4,6 +4,8 @@
 # Copyright (C) 2024 Sarah Hoffmann
 """ Main function for building a complex route geometry.
 """
+from copy import deepcopy
+
 import sqlalchemy as sa
 from geoalchemy2.shape import to_shape
 from geoalchemy2 import Geography
@@ -27,8 +29,18 @@ def get_relation_objects(conn, members, way_table, route_table):
 
     rels = {m['id']: None for m in members if m['type'] == 'R'}
 
-    return [data[(m['type'], m['id'])] for m in members
-            if (m['type'], m['id']) in data]
+    finallist = []
+    for i, m in enumerate(members):
+        key = (m['type'], m['id'])
+        if (seg := data.get(key)) is not None:
+            # If a way appears two times, we need to make a copy because
+            # the way may be reversed and moved around later.
+            if seg.start is not None:
+                seg = deepcopy(seg)
+            seg.start = i
+            finallist.append(seg)
+
+    return finallist
 
 
 def _extract_ways(conn, ways: dict[int, str], t: sa.FromClause):

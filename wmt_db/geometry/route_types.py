@@ -25,6 +25,10 @@ class BaseWay:
     """ Geometry of the way."""
     role: str | None = None
     """ Optional role of the way within the relation. """
+    start: float | None = None
+    """ Distance from beginning of route.
+        (Either in meter or in number of members in the relation.)
+    """
 
     @property
     def is_closed(self) -> bool:
@@ -144,6 +148,10 @@ class RouteSegment:
     """
     role: str | None = None
     """ Optional role of the way within the relation. """
+    start: float | None = None
+    """ Distance from beginning of route.
+        (Either in meter or in number of members in the relation.)
+    """
 
     @property
     def first(self) -> tuple[float, float]:

@@ -50,6 +50,7 @@ class TestGetRelationObjects:
         assert result.role == ''
         assert result.geom.wkt == 'LINESTRING (0 0, 0.1 0.1)'
 
+
     @pytest.mark.parametrize('role,direction', [('forward', 1),
                                                 ('backward', -1)])
     def test_oneway_way(self, mapdb, role, direction):
@@ -65,6 +66,7 @@ class TestGetRelationObjects:
         assert result.role == ''
         assert result.geom.wkt == 'LINESTRING (0 0, 0.1 0.1)'
 
+
     @pytest.mark.parametrize('members,out', [([('W', 1, ''), ('W', 2, '')], [1, 2]),
                                              ([('W', 2, ''), ('W', 1, '')], [2, 1]),
                                              ([('N', 34, ''), ('W', 2, ''), ('W', 1, '')], [2, 1])
@@ -78,3 +80,13 @@ class TestGetRelationObjects:
 
         assert [r.osm_id for r in objs] == out
 
+
+    def test_circle_with_approach(self, mapdb):
+        mapdb.insert_into('ways')\
+            .line(1, geom='LINESTRING(0 0, 0 -0.01)', tags={})\
+            .line(2, geom='LINESTRING(0 0, 0 0.1, 0.1 0.1, 0 0)', tags={})
+
+        objs = self.run_test(mapdb, [('W', 1, ''), ('W', 2, ''), ('W', 1, '')])
+
+        assert [r.osm_id for r in objs] == [1, 2, 1]
+        assert [r.start for r in objs] == [0, 1, 2]
