@@ -2,6 +2,8 @@
 #
 # This file is part of the Waymarked Trails Map Project
 # Copyright (C) 2024 Sarah Hoffmann
+import json
+
 import pytest
 
 from shapely import from_wkt
@@ -69,23 +71,44 @@ def test_join_ways_different_directions(l1, l2, d):
     ]
     route = build_route(members)
 
-    assert route.length == 20
-    assert not route.appendices
-    assert len(route.main) == 2
 
-    inner = route.main[0]
 
-    assert isinstance(inner, WaySegment)
-    assert inner.length == 10
-    assert len(inner.ways) == 1
-    assert inner.direction == 0
-    assert_geometries_equal(inner.ways[0].geom, line('3 4, 3.1 4'))
-
-    inner = route.main[1]
-
-    assert isinstance(inner, WaySegment)
-    assert inner.length == 10
-    assert len(inner.ways) == 1
-    assert inner.direction == 1
-    assert_geometries_equal(inner.ways[0].geom, line('3.1 4, 3.2 4'))
-
+    assert json.loads(route.to_json()) == \
+        { 'route_type': 'route',
+          'length': 20,
+          'start': None,
+          'role': '',
+          'main': [
+            { 'route_type': 'linear',
+              'start': None,
+              'length': 10,
+              'ways': [
+                { 'route_type': 'base',
+                  'id': 1,
+                  'length': 10,
+                  'start': None,
+                  'tags': {},
+                  'role': '',
+                  'geometry': {'type': 'LineString',
+                               'coordinates': [[3.0, 4.0], [3.1, 4.0]]}
+                }
+              ]
+            },
+            { 'route_type': 'linear',
+              'start': None,
+              'length': 10,
+              'ways': [
+                { 'route_type': 'base',
+                  'id': 2,
+                  'length': 10,
+                  'start': None,
+                  'tags': {},
+                  'role': '',
+                  'geometry': {'type': 'LineString',
+                               'coordinates': [[3.1, 4.0], [3.2, 4.0]]}
+                }
+              ]
+            }
+           ],
+           'appendices': []
+         }

@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from osgende.common.tags import TagStore
 from shapely import LineString
 
+from ..common.json_writer import JsonWriter
+
 @dataclass
 class BaseWay:
     """ Container for a single OSM way.
@@ -25,7 +27,7 @@ class BaseWay:
     """ Geometry of the way."""
     role: str | None = None
     """ Optional role of the way within the relation. """
-    start: float | None = None
+    start: int | None = None
     """ Distance from beginning of route.
         (Either in meter or in number of members in the relation.)
     """
@@ -51,6 +53,21 @@ class BaseWay:
         self.geom = self.geom.reverse()
         self.direction = -self.direction
 
+    def to_json(self) -> str:
+        return JsonWriter().start_object()\
+                .keyval('route_type', 'base')\
+                .keyval('start', self.start)\
+                .keyval('id', self.osm_id)\
+                .keyval('tags', self.tags)\
+                .keyval('length', self.length)\
+                .keyval('role', self.role or '')\
+                .key('geometry').start_object()\
+                    .keyval('type', 'LineString')\
+                    .keyval('coordinates', list(self.geom.coords))\
+                    .end_object().next()\
+                .end_object()()
+
+
 @dataclass
 class WaySegment:
     """ A segment containing only BaseWays that create a linear section
@@ -60,6 +77,9 @@ class WaySegment:
     length: int
     """ Length in meters. """
     ways: list[BaseWay]
+    start: int | None = None
+    """ Distance from beginning of route.
+    """
 
     @property
     def role(self) -> str:
@@ -130,6 +150,66 @@ class WaySegment:
 
         return False
 
+    def to_json(self) -> str:
+        out = JsonWriter().start_object()\
+                .keyval('route_type', 'linear')\
+                .keyval('start', self.start)\
+                .keyval('length', self.length)\
+                .key('ways').start_array()
+
+        for seg in self.ways:
+            out.raw(seg.to_json()).next()
+
+        out.end_array().next().end_object()
+
+        return out()
+
+
+
+@dataclass
+class SplitSegment:
+    """ A segment with different routes for forward and backward.
+    """
+    length: int
+    """ Length of the main route excluding gaps between segments.
+    """
+    forward: 'list[AnySegment]'
+    """ Route for going from the beginning of the segment to the end.
+    """
+    backward: 'list[AnySegment]'
+    """ Route for going from the end of the segment to the beginning.
+    """
+    start: float | None = None
+    """ Distance from beginning of route in meters.
+    """
+
+    @property
+    def first(self) -> tuple[float, float]:
+        return self.forward.first
+
+    @property
+    def last(self) -> tuple[float, float]:
+        return self.forward.last
+
+    def is_reversable(self) -> bool:
+        return True
+
+    def reverse(self) -> None:
+        new_backward = forward
+        forward = backward
+        backward = new_backward
+        forward.reverse()
+        backward.reverse()
+
+    def to_json(self) -> str:
+        return JsonWriter().start_object()\
+                .keyval('route_type', 'split')\
+                .keyval('start', self.start)\
+                .keyval('length', self.length)\
+                .key('forward').raw(self.forward.to_json()).next()\
+                .key('backward').raw(self.backward.to_json())\
+                .end_object()()
+
 
 @dataclass
 class RouteSegment:
@@ -164,11 +244,34 @@ class RouteSegment:
     def is_reversable(self) -> bool:
         return True  # XXX only without appendices?
 
-    def reverse() -> None:
+    def reverse(self) -> None:
         self.main.reverse()
         for s in self.main:
             s.reverse()
         # XXX effect on appendices?
 
+    def to_json(self) -> str:
+        out = JsonWriter().start_object()\
+                .keyval('route_type', 'route')\
+                .keyval('length', self.length)\
+                .keyval('start', self.start)\
+                .keyval('role', self.role or '')\
+                .key('main').start_array()
 
-AnySegment = WaySegment | RouteSegment
+        for seg in self.main:
+            out.raw(seg.to_json()).next()
+
+        out.end_array().next()
+
+        out.key('appendices').start_array()
+
+        for seg in self.appendices:
+            out.raw(seg.to_json()).next()
+
+        out.end_array().next().end_object()
+
+        return out()
+
+
+
+AnySegment = WaySegment | RouteSegment | SplitSegment
