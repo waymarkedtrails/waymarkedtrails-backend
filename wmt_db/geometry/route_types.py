@@ -60,6 +60,7 @@ class BaseWay:
                 .keyval('id', self.osm_id)\
                 .keyval('tags', self.tags)\
                 .keyval('length', self.length)\
+                .keyval('direction', self.direction)\
                 .keyval('role', self.role or '')\
                 .key('geometry').start_object()\
                     .keyval('type', 'LineString')\
@@ -185,11 +186,11 @@ class SplitSegment:
 
     @property
     def first(self) -> tuple[float, float]:
-        return self.forward.first
+        return self.forward[0].first
 
     @property
     def last(self) -> tuple[float, float]:
-        return self.forward.last
+        return self.backward[0].first
 
     def is_reversable(self) -> bool:
         return True
@@ -202,13 +203,24 @@ class SplitSegment:
         backward.reverse()
 
     def to_json(self) -> str:
-        return JsonWriter().start_object()\
+        out = JsonWriter().start_object()\
                 .keyval('route_type', 'split')\
                 .keyval('start', self.start)\
                 .keyval('length', self.length)\
-                .key('forward').raw(self.forward.to_json()).next()\
-                .key('backward').raw(self.backward.to_json())\
-                .end_object()()
+                .key('forward').start_array()
+
+        for seg in self.forward:
+            out.raw(seg.to_json()).next()
+
+        out.end_array().next()\
+           .key('backward')
+
+        for seg in self.backward:
+            out.raw(seg.to_json()).next()
+
+        out.end_array().next().end_object()
+
+        return out()
 
 
 @dataclass
@@ -220,7 +232,6 @@ class RouteSegment:
     """ Length of the main route excluding gaps between segments. """
     main: 'list[AnySegment]'
     """ Linear sequence of segments constituting the main route.
-        Gaps must be filled with BeelineSegments.
     """
     appendices: 'list[WaySegment | RouteSegment]'
     """ List of excursions and approaches for the route. The role

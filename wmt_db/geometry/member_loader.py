@@ -64,6 +64,8 @@ def _extract_ways(conn, ways: dict[int, str], t: sa.FromClause):
                 case _:
                     direction = 0
                     role = ways[way.id].strip()
+            if geom.is_closed and way.tags.get('junction') in ('roundabout', 'circular'):
+               direction = 1
             yield ('W', way.id), rt.BaseWay(osm_id=way.id, tags=TagStore(way.tags),
                                            length=int(way.length), direction=direction,
                                            role=role, geom=geom)
