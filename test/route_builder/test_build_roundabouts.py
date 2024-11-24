@@ -46,7 +46,7 @@ def test_roundabout_middle(grid, rd, l1, l2):
                 backward=[rt.WaySegment(
                             length=6,
                             ways=[rt.BaseWay(osm_id=2, tags=TagStore(), length=6,
-                                             direction=1, role='', geom=g.line('412')
+                                             direction=-1, role='', geom=g.line('214')
                                              )
                                  ]
                             )
@@ -91,7 +91,7 @@ def test_roundabout_beginning(grid, l2):
                 backward=[rt.WaySegment(
                             length=3,
                             ways=[rt.BaseWay(osm_id=2, tags=TagStore(), length=3,
-                                             direction=1, role='', geom=g.line('41')
+                                             direction=-1, role='', geom=g.line('14')
                                              )
                                  ]
                             )
@@ -141,7 +141,7 @@ def test_roundabout_end(grid, l1):
                 backward=[rt.WaySegment(
                             length=9,
                             ways=[rt.BaseWay(osm_id=2, tags=TagStore(), length=9,
-                                             direction=1, role='', geom=g.line('3412')
+                                             direction=-1, role='', geom=g.line('2143')
                                              )
                                  ]
                             )

@@ -85,7 +85,6 @@ def _join_oneways(segments: list[rt.AnySegment]) -> None:
     """
     next_id = 0
     while (seg := _next_oneway(segments, next_id)) is not None:
-        print(f"Found oneway {seg}")
         new_segments = _process_oneways(segments, seg[0], seg[1])
         segments[seg[0]:seg[1]] = new_segments
         if seg[1] < 0:
@@ -185,7 +184,7 @@ def _make_roundabout(seg: rt.BaseWay, start_points, end_points) -> rt.SplitSegme
                      direction=1, geom=fwd_way, role=seg.role)
     bwd = rt.BaseWay(osm_id=seg.osm_id, tags=seg.tags,
                      length=int(round(seg.length*bwd_way.length/seg.geom.length)),
-                     direction=1, geom=bwd_way, role=seg.role)
+                     direction=-1, geom=bwd_way.reverse(), role=seg.role)
 
     return rt.SplitSegment(length=int((fwd.length + bwd.length)/2),
                            forward=[rt.WaySegment(length=fwd.length, ways=[fwd])],

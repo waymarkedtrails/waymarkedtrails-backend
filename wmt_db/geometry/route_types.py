@@ -22,9 +22,10 @@ class BaseWay:
     length: int
     """ Length in meters. """
     direction: int
-    """ Forward: 1, Backward: -1, Bi-directional: 0 """
+    """ Use only Forward: 1, Use only Backward: -1, Bi-directional: 0 """
     geom: LineString
-    """ Geometry of the way."""
+    """ Geometry of the way. Must go forward relative to the primary direction
+        of the route."""
     role: str | None = None
     """ Optional role of the way within the relation. """
     start: int | None = None
@@ -176,9 +177,12 @@ class SplitSegment:
     """
     forward: 'list[AnySegment]'
     """ Route for going from the beginning of the segment to the end.
+        All directional segments must have direction 1.
     """
     backward: 'list[AnySegment]'
-    """ Route for going from the end of the segment to the beginning.
+    """ Route to follow when going in the reverse direction of the route.
+        Segments are still ordered in the primary section of the route.
+        All directional segments must have direction -1.
     """
     start: float | None = None
     """ Distance from beginning of route in meters.
@@ -190,7 +194,7 @@ class SplitSegment:
 
     @property
     def last(self) -> tuple[float, float]:
-        return self.backward[0].first
+        return self.forward[-1].last
 
     def is_reversable(self) -> bool:
         return True
