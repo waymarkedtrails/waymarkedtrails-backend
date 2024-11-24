@@ -8,7 +8,6 @@ import pytest
 
 from osgende.common.tags import TagStore
 from wmt_db.geometry import build_route
-from wmt_db.geometry.route_types import BaseWay
 import wmt_db.geometry.route_types as rt
 
 @pytest.mark.parametrize('rd', ['12341', '23412', '34123', '41234'])
@@ -21,9 +20,9 @@ def test_roundabout_middle(grid, rd, l1, l2):
                3
         """)
     route = build_route([
-        BaseWay(1, {}, 5, 0, g.line(l1), ''),
-        BaseWay(2, {}, 12, 1, g.line(rd), ''),
-        BaseWay(3, {}, 5, 0, g.line(l2), '')
+        rt.BaseWay(1, {}, 5, 0, g.line(l1), ''),
+        rt.BaseWay(2, {}, 12, 1, g.line(rd), ''),
+        rt.BaseWay(3, {}, 5, 0, g.line(l2), '')
     ])
 
     assert route == rt.RouteSegment(
@@ -73,8 +72,8 @@ def test_roundabout_beginning(grid, l2):
         """)
 
     route = build_route([
-        BaseWay(2, {}, 12, 1, g.line('12341'), ''),
-        BaseWay(3, {}, 5, 0, g.line(l2), '')
+        rt.BaseWay(2, {}, 12, 1, g.line('12341'), ''),
+        rt.BaseWay(3, {}, 5, 0, g.line(l2), '')
     ])
 
     assert route == rt.RouteSegment(
@@ -117,8 +116,8 @@ def test_roundabout_end(grid, l1):
                3
         """)
     route = build_route([
-        BaseWay(1, {}, 5, 0, g.line(l1), ''),
-        BaseWay(2, {}, 12, 1, g.line('12341'), '')
+        rt.BaseWay(1, {}, 5, 0, g.line(l1), ''),
+        rt.BaseWay(2, {}, 12, 1, g.line('12341'), '')
     ])
 
     assert route == rt.RouteSegment(

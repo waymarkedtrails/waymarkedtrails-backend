@@ -150,9 +150,15 @@ def _process_oneways(segments: list[rt.AnySegment], frm: int, to: int):
         assert len(first.ways) == 1
         return [_make_roundabout(first.ways[0], start_points, end_points)]
 
-    return segments[frm:to]
+    if segments[0].first == segments[-1].last:
+        return _make_oneways_from_circle(segments[frm:to], start_points, end_points)
+
+    return _make_oneways_directional(segments[frm:to], start_points, end_points)
+
 
 def _make_roundabout(seg: rt.BaseWay, start_points, end_points) -> rt.SplitSegment:
+    """ Build a split section from a single roundabout way.
+    """
     if seg.direction == -1:
         seg.reverse()
 
@@ -184,3 +190,20 @@ def _make_roundabout(seg: rt.BaseWay, start_points, end_points) -> rt.SplitSegme
     return rt.SplitSegment(length=int((fwd.length + bwd.length)/2),
                            forward=[rt.WaySegment(length=fwd.length, ways=[fwd])],
                            backward=[rt.WaySegment(length=bwd.length, ways=[bwd])])
+
+
+def _make_oneways_from_circle(segments: list[rt.AnySegment], start_points, end_points):
+    """ Build a split section from a list of segments arranged in a circle.
+    """
+    return segments
+
+
+def _make_oneways_directional(segments: list[rt.AnySegment], start_points, end_points):
+    """ Build a split section from a list of segments arranged in direction
+        or the route.
+
+        This is the fallback implementation that also deals with holes in the
+        route and badly ordered routes.
+    """
+    return segments
+
