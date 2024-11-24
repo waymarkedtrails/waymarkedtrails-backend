@@ -173,7 +173,7 @@ class SplitSegment:
     """ A segment with different routes for forward and backward.
     """
     length: int
-    """ Length of the main route excluding gaps between segments.
+    """ Length of forward route.
     """
     forward: 'list[AnySegment]'
     """ Route for going from the beginning of the segment to the end.
@@ -200,11 +200,16 @@ class SplitSegment:
         return True
 
     def reverse(self) -> None:
-        new_backward = forward
-        forward = backward
-        backward = new_backward
-        forward.reverse()
-        backward.reverse()
+        new_backward = self.forward
+        self.forward = self.backward
+        self.backward = new_backward
+        self.forward.reverse()
+        for s in self.forward:
+            s.reverse()
+        self.backward.reverse()
+        for s in self.backward:
+            s.reverse()
+        self.length = sum(s.length for s in self.forward)
 
     def to_json(self) -> str:
         out = JsonWriter().start_object()\

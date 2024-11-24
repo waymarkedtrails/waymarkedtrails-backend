@@ -7,7 +7,7 @@
 from collections import defaultdict
 from itertools import pairwise
 
-from shapely import LineString
+import shapely
 
 from . import route_types as rt
 
@@ -22,8 +22,7 @@ def build_route(members: list[rt.BaseWay | rt.RouteSegment]) -> rt.RouteSegment:
     members = _ways_to_segments(members)
 
     if len(members) == 1:
-        return rt.RouteSegment(length=members[0].length, main=[members[0]],
-                               appendices=[])
+        return rt.RouteSegment(length=members[0].length, main=members, appendices=[])
 
     mains = []
     alternatives = []
@@ -37,7 +36,6 @@ def build_route(members: list[rt.BaseWay | rt.RouteSegment]) -> rt.RouteSegment:
             case _:
                 appendices.append(m)
 
-    _flip_order(mains)
     _join_oneways(mains)
     _flip_order(mains)
 
@@ -68,14 +66,16 @@ def _flip_order(segments: list[rt.WaySegment | rt.RouteSegment]) -> None:
     """ Recheck the order of single-element WaySegments. They might still
         need to be flipped according to their neighbours.
     """
-    for s1, s2 in pairwise(segments):
+    for i, (s1, s2) in enumerate(pairwise(segments)):
         if s1.last != s2.first:
-            if s1.is_reversable() and s1.first == s2.first:
+            s1_flippable = s1.is_reversable() \
+                           and (i <= 0 or s1.first != segments[i - 1].last)
+            if s1_flippable and s1.first == s2.first:
                 s1.reverse()
-            elif s2.is_reversable() and s1.first == s2.last:
+            elif s1_flippable and s2.is_reversable() and s1.first == s2.last:
                 s1.reverse()
                 s2.reverse()
-            elif s1.is_reversable() and s2.is_reversable() and s1.last == s2.last:
+            elif s2.is_reversable() and s1.last == s2.last:
                 s2.reverse()
 
 
@@ -85,7 +85,8 @@ def _join_oneways(segments: list[rt.AnySegment]) -> None:
     """
     next_id = 0
     while (seg := _next_oneway(segments, next_id)) is not None:
-        new_segments = _process_oneways(segments, seg[0], seg[1])
+        new_segments = _process_oneways(segments, seg[0],
+                                        (len(segments) if seg[1] < 0 else seg[1]) - 1)
         segments[seg[0]:seg[1]] = new_segments
         if seg[1] < 0:
             break
@@ -125,6 +126,9 @@ def _next_oneway(segments: list[rt.AnySegment], start_at: int) -> None:
 
 def _process_oneways(segments: list[rt.AnySegment], frm: int, to: int):
     """ Convert the given subset of segments into a split segment.
+
+        frm is the first index belonging to the sublist, to the last
+        index of the sublist.
     """
     # Compute the possible connection points.
     start_points = []
@@ -136,23 +140,23 @@ def _process_oneways(segments: list[rt.AnySegment], frm: int, to: int):
            start_points.append(prevseg.first)
 
     end_points = []
-    if to > 0 and to < len(segments):
-        nextseg = segments[to]
+    if to < len(segments) - 1:
+        nextseg = segments[to + 1]
         end_points.append(nextseg.first)
         if nextseg.is_reversable() and \
-         (to >= len(segments) - 1 or nextseg.last != segments[to + 1].first):
+         (to >= len(segments) - 2 or nextseg.last != segments[to + 2].first):
             end_points.append(nextseg.last)
 
-    first = segments[frm]
-    if isinstance(first, rt.WaySegment) and first.ways[0].is_closed:
-        assert to == frm + 1
-        assert len(first.ways) == 1
-        return [_make_roundabout(first.ways[0], start_points, end_points)]
+    if frm == to:
+        first = segments[frm]
+        if isinstance(first, rt.WaySegment):
+            if first.ways[0].is_closed:
+                assert len(first.ways) == 1
+                return [_make_roundabout(first.ways[0], start_points, end_points)]
+            if first.is_closed:
+                return [_make_circular(first, start_points, end_points)]
 
-    if segments[0].first == segments[-1].last:
-        return _make_oneways_from_circle(segments[frm:to], start_points, end_points)
-
-    return _make_oneways_directional(segments[frm:to], start_points, end_points)
+    return _make_oneways_directional(segments[frm:to + 1], start_points, end_points)
 
 
 def _make_roundabout(seg: rt.BaseWay, start_points, end_points) -> rt.SplitSegment:
@@ -177,8 +181,8 @@ def _make_roundabout(seg: rt.BaseWay, start_points, end_points) -> rt.SplitSegme
         if ept == spt:
             ept = 0
 
-    fwd_way = LineString(points[spt:ept + 1] if spt < ept else points[spt:] + points[1:ept + 1])
-    bwd_way = LineString(points[ept:spt + 1] if ept < spt else points[ept:] + points[1:spt + 1])
+    fwd_way = shapely.LineString(points[spt:ept + 1] if spt < ept else points[spt:] + points[1:ept + 1])
+    bwd_way = shapely.LineString(points[ept:spt + 1] if ept < spt else points[ept:] + points[1:spt + 1])
     fwd = rt.BaseWay(osm_id=seg.osm_id, tags=seg.tags,
                      length=int(round(seg.length*fwd_way.length/seg.geom.length)),
                      direction=1, geom=fwd_way, role=seg.role)
@@ -186,15 +190,48 @@ def _make_roundabout(seg: rt.BaseWay, start_points, end_points) -> rt.SplitSegme
                      length=int(round(seg.length*bwd_way.length/seg.geom.length)),
                      direction=-1, geom=bwd_way.reverse(), role=seg.role)
 
-    return rt.SplitSegment(length=int((fwd.length + bwd.length)/2),
+    return rt.SplitSegment(length=fwd.length,
                            forward=[rt.WaySegment(length=fwd.length, ways=[fwd])],
                            backward=[rt.WaySegment(length=bwd.length, ways=[bwd])])
 
 
-def _make_oneways_from_circle(segments: list[rt.AnySegment], start_points, end_points):
-    """ Build a split section from a list of segments arranged in a circle.
+def _make_circular(seg: rt.WaySegment, start_points, end_points) -> rt.SplitSegment | rt.WaySegment:
+    """ Convert a cicular multi-way WaySegment into a split segment by
+        cutting at the most conventient place.
     """
-    return segments
+    if seg.first in start_points and end_points:
+        for i, way in enumerate(seg.ways):
+            if i > 0 and way.first in end_points:
+                split_idx = i
+                break
+        else:
+            mp = shapely.MultiPoint(end_points)
+            dist, split_idx = min((shapely.distance(mp, shapely.Point(way.first)), i)
+                                  for i, way in enumerate(seg.ways) if i > 0)
+    elif seg.first in end_points and start_points:
+        for i, way in enumerate(seg.ways):
+            if i > 0 and way.first in start_points:
+                split_idx = i
+                break
+        else:
+            mp = shapely.MultiPoint(start_points)
+            dist, split_idx = min((shapely.distance(mp, shapely.Point(way.first)), i)
+                                  for i, way in enumerate(seg.ways) if i > 0)
+    else:
+        split_idx = int(len(seg.ways)/2)
+
+    fwd_ways = seg.ways[0:split_idx]
+    fwd = rt.WaySegment(length=sum(s.length for s in fwd_ways), ways = fwd_ways)
+
+    bwd_ways = seg.ways[split_idx:]
+    bwd = rt.WaySegment(length=sum(s.length for s in bwd_ways), ways=bwd_ways)
+
+    if seg.direction == 1:
+        bwd.reverse()
+    else:
+        fwd.reverse()
+
+    return rt.SplitSegment(length=fwd.length, forward=[fwd], backward=[bwd])
 
 
 def _make_oneways_directional(segments: list[rt.AnySegment], start_points, end_points):
@@ -204,5 +241,39 @@ def _make_oneways_directional(segments: list[rt.AnySegment], start_points, end_p
         This is the fallback implementation that also deals with holes in the
         route and badly ordered routes.
     """
-    return segments
+    out_segments = []
+    # determine starting point
+    first_seg = segments[0]
+    if first_seg.first in start_points or first_seg.first in end_points:
+        endpts = {1: first_seg.first, -1: first_seg.first}
+    elif first_seg.is_reversable() \
+            and (first_seg.last in start_points or first_seg.last in end_points):
+        endpts = {1: first_seg.last, -1: first_seg.last}
+
+    segs = {1: [], -1: []}  # indexed by direction
+
+    for seg in segments:
+        if seg.first != endpts[seg.direction] \
+           and seg.is_reversable() and seg.last == endpts[-seg.direction]:
+            seg.reverse()
+
+        segs[seg.direction].append(seg)
+        endpts[seg.direction] = seg.last
+
+        if endpts[1] == endpts[-1] and segs[1] and segs[-1]:
+            out_segments.append(rt.SplitSegment(
+                length=sum(s.length for s in segs[1]), forward=segs[1], backward=segs[-1]))
+
+            segs = {1: [], -1: []}
+
+    if segs[1]:
+        if segs[-1]:
+            out_segments.append(rt.SplitSegment(
+                length=sum(s.length for s in segs[1]), forward=segs[1], backward=segs[-1]))
+        else:
+            out_segments.extend(segs[1])
+    elif segs[-1]:
+        out_segments.extend(segs[-1])
+
+    return out_segments
 

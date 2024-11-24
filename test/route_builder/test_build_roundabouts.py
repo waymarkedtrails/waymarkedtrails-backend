@@ -77,9 +77,9 @@ def test_roundabout_beginning(grid, l2):
     ])
 
     assert route == rt.RouteSegment(
-        length=11, appendices=[],
+        length=14, appendices=[],
         main=[rt.SplitSegment(
-                length=6,
+                length=9,
                 forward=[rt.WaySegment(
                             length=9,
                             ways=[rt.BaseWay(osm_id=2, tags=TagStore(), length=9,
@@ -121,7 +121,7 @@ def test_roundabout_end(grid, l1):
     ])
 
     assert route == rt.RouteSegment(
-        length=11, appendices=[],
+        length=8, appendices=[],
         main=[rt.WaySegment(
                 length=5,
                 ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=5,
@@ -129,7 +129,7 @@ def test_roundabout_end(grid, l1):
                      ]
                 ),
               rt.SplitSegment(
-                length=6,
+                length=3,
                 forward=[rt.WaySegment(
                             length=3,
                             ways=[rt.BaseWay(osm_id=2, tags=TagStore(), length=3,
