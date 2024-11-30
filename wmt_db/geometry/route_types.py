@@ -184,25 +184,26 @@ class SplitSegment:
         Segments are still ordered in the primary section of the route.
         All directional segments must have direction -1.
     """
+    first: tuple[float, float]
+    """ Coordinate of the beginning of the route.
+        Needs to be explicit because forward or backward may have gaps at
+        the beginning.
+    """
+    last: tuple[float, float]
+    """ Coordinate of the end of the route.
+        Needs to be explicit because forward or backward may have gaps
+        at the end.
+    """
     start: float | None = None
     """ Distance from beginning of route in meters.
     """
-
-    @property
-    def first(self) -> tuple[float, float]:
-        return self.forward[0].first
-
-    @property
-    def last(self) -> tuple[float, float]:
-        return self.forward[-1].last
 
     def is_reversable(self) -> bool:
         return True
 
     def reverse(self) -> None:
-        new_backward = self.forward
-        self.forward = self.backward
-        self.backward = new_backward
+        self.forward, self.backward = self.backward, self.forward
+        self.first, self.last = self.last, self.first
         self.forward.reverse()
         for s in self.forward:
             s.reverse()
@@ -210,6 +211,8 @@ class SplitSegment:
         for s in self.backward:
             s.reverse()
         self.length = sum(s.length for s in self.forward)
+
+
 
     def to_json(self) -> str:
         out = JsonWriter().start_object()\

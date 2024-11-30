@@ -85,16 +85,16 @@ def _join_oneways(segments: list[rt.AnySegment]) -> None:
     """
     next_id = 0
     while (seg := _next_oneway(segments, next_id)) is not None:
-        new_segments = _process_oneways(segments, seg[0],
-                                        (len(segments) if seg[1] < 0 else seg[1]) - 1)
-        segments[seg[0]:seg[1]] = new_segments
+        endidx = len(segments) if seg[1] < 0 else seg[1]
+        new_segments = _process_oneways(segments, seg[0], endidx - 1)
+        segments[seg[0]:endidx] = new_segments
         if seg[1] < 0:
             break
         next_id = seg[0] + len(new_segments)
 
 
 def _next_oneway(segments: list[rt.AnySegment], start_at: int) -> None:
-    """ Fine the next continuous line of segments that are directional.
+    """ Find the next continuous line of segments that are directional.
 
         A closed oneway is always returned on its own.
     """
@@ -110,16 +110,16 @@ def _next_oneway(segments: list[rt.AnySegment], start_at: int) -> None:
         return (oneway_start, oneway_start + 1)
 
     endpoints = set((first.first, first.last))
-    for i, seg in enumerate(segments[oneway_start:]):
+    for i, seg in enumerate(segments[oneway_start + 1:], oneway_start + 1):
         if seg.direction == 0 or seg.is_closed:
-            return (oneway_start, oneway_start + i + 1)
+            return (oneway_start, i)
         for pt in (seg.first, seg.last):
             if pt in endpoints:
                 endpoints.remove(pt)
             else:
                 endpoints.add(pt)
         if not endpoints:
-            return (oneway_start, oneway_start + i + 1)
+            return (oneway_start, i + 1)
 
     return (oneway_start, -1)
 
@@ -155,6 +155,8 @@ def _process_oneways(segments: list[rt.AnySegment], frm: int, to: int):
                 return [_make_roundabout(first.ways[0], start_points, end_points)]
             if first.is_closed:
                 return [_make_circular(first, start_points, end_points)]
+        # With only one segment, this can't possibly be a SplitSegment. Return.
+        return [first]
 
     return _make_oneways_directional(segments[frm:to + 1], start_points, end_points)
 
@@ -192,7 +194,9 @@ def _make_roundabout(seg: rt.BaseWay, start_points, end_points) -> rt.SplitSegme
 
     return rt.SplitSegment(length=fwd.length,
                            forward=[rt.WaySegment(length=fwd.length, ways=[fwd])],
-                           backward=[rt.WaySegment(length=bwd.length, ways=[bwd])])
+                           backward=[rt.WaySegment(length=bwd.length, ways=[bwd])],
+                           first=fwd.first,
+                           last=fwd.last)
 
 
 def _make_circular(seg: rt.WaySegment, start_points, end_points) -> rt.SplitSegment | rt.WaySegment:
@@ -231,49 +235,101 @@ def _make_circular(seg: rt.WaySegment, start_points, end_points) -> rt.SplitSegm
     else:
         fwd.reverse()
 
-    return rt.SplitSegment(length=fwd.length, forward=[fwd], backward=[bwd])
+    return rt.SplitSegment(length=fwd.length, forward=[fwd], backward=[bwd],
+                           first=fwd.first, last=fwd.last)
 
 
 def _make_oneways_directional(segments: list[rt.AnySegment], start_points, end_points):
     """ Build a split section from a list of segments arranged in direction
-        or the route.
+        of the route.
 
         This is the fallback implementation that also deals with holes in the
         route and badly ordered routes.
     """
     out_segments = []
     # determine starting point
-    first_seg = segments[0]
-    if first_seg.first in start_points or first_seg.first in end_points:
-        endpts = {1: first_seg.first, -1: first_seg.first}
-    elif first_seg.is_reversable() \
-            and (first_seg.last in start_points or first_seg.last in end_points):
-        endpts = {1: first_seg.last, -1: first_seg.last}
+    first_point = segments[0].first
+    for seg in segments:
+        if seg.first in start_points:
+            first_point = seg.first
+            break
+        if seg.is_reversable() and seg.last in start_points:
+            first_point = seg.last
+            break
+    else:
+        # Nothing to determine the starting point,
+        # look ahead from the first segment to get a hint on its direction.
+        first_seg = None
+        for seg in segments:
+            if first_seg is None:
+                first_seg is seg
+                continue
+            if first_seg.direction == -seg.direction:
+                if first_seg.first == seg.first:
+                    first_point = first_seg.first
+                    break
+                if seg.is_reversable() and first_seg.last == seg.last:
+                    first_point = first_seg.last
+                    break
+            else:
+                if first_seg.last == seg.first:
+                    first_point = first_seg.last
+                    break
+                if seg.is_reversable() and first_seg.first == seg.last:
+                    first_point = first_seg.first
+                    break
 
+    endpts = {1: first_point, -1: first_point}
     segs = {1: [], -1: []}  # indexed by direction
 
-    for seg in segments:
-        if seg.first != endpts[seg.direction] \
-           and seg.is_reversable() and seg.last == endpts[-seg.direction]:
-            seg.reverse()
+    for i, seg in enumerate(segments):
+        if endpts[seg.direction] in end_points:
+            if seg.is_reversable():
+                seg.reverse()
+        elif seg.first != endpts[seg.direction] and seg.is_reversable()\
+           and not seg.last in end_points:
+            if seg.last == endpts[-seg.direction] or seg.first in end_points:
+                seg.reverse()
+            else:
+                # Look ahead if the next segment might give a hint on the direction.
+                for ns in segments[i + 1:]:
+                    if seg.direction == ns.direction:
+                        if seg.last == ns.first:
+                            break
+                        if ns.is_reversable() and seg.first == ns.last:
+                            seg.reverse()
+                            break
+                    else:
+                        if seg.first == ns.first:
+                            seg.reverse()
+                            break
+                        if ns.is_reversable() and seg.last == ns.last:
+                            break
 
         segs[seg.direction].append(seg)
         endpts[seg.direction] = seg.last
 
         if endpts[1] == endpts[-1] and segs[1] and segs[-1]:
             out_segments.append(rt.SplitSegment(
-                length=sum(s.length for s in segs[1]), forward=segs[1], backward=segs[-1]))
+                length=sum(s.length for s in segs[1]),
+                forward=segs[1],
+                backward=segs[-1],
+                first=first_point, last=endpts[1]))
 
             segs = {1: [], -1: []}
+            first_point = endpts[1]
 
     if segs[1]:
         if segs[-1]:
             out_segments.append(rt.SplitSegment(
-                length=sum(s.length for s in segs[1]), forward=segs[1], backward=segs[-1]))
+                length=sum(s.length for s in segs[1]),
+                forward=segs[1],
+                backward=segs[-1],
+                first=first_point,
+                last=endpts[-1] if endpts[-1] in end_points else endpts[1]))
         else:
             out_segments.extend(segs[1])
     elif segs[-1]:
         out_segments.extend(segs[-1])
 
     return out_segments
-

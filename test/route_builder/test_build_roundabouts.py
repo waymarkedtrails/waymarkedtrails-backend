@@ -35,6 +35,8 @@ def test_roundabout_middle(grid, rd, l1, l2):
                 ),
               rt.SplitSegment(
                 length=6,
+                first=tuple(g.coord(2)),
+                last=tuple(g.coord(4)),
                 forward=[rt.WaySegment(
                             length=6,
                             ways=[rt.BaseWay(osm_id=2, tags=TagStore(), length=6,
@@ -80,6 +82,8 @@ def test_roundabout_beginning(grid, l2):
         length=14, appendices=[],
         main=[rt.SplitSegment(
                 length=9,
+                first=tuple(g.coord(1)),
+                last=tuple(g.coord(4)),
                 forward=[rt.WaySegment(
                             length=9,
                             ways=[rt.BaseWay(osm_id=2, tags=TagStore(), length=9,
@@ -130,6 +134,8 @@ def test_roundabout_end(grid, l1):
                 ),
               rt.SplitSegment(
                 length=3,
+                first=tuple(g.coord(2)),
+                last=tuple(g.coord(3)),
                 forward=[rt.WaySegment(
                             length=3,
                             ways=[rt.BaseWay(osm_id=2, tags=TagStore(), length=3,

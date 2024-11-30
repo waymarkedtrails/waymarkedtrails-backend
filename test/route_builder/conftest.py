@@ -17,6 +17,11 @@ class Grid:
                 if not c.isspace():
                     self.nodes[c] = [origin[0] + spacing * x, origin[1] + spacing * y]
 
+    def coord(self, point):
+        """ Return the coordinate tuple for a given point.
+        """
+        return self.nodes[str(point)]
+
     def coords(self, points):
         """ Return the given points as a coordinate list.
         """
