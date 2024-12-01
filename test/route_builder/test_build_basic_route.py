@@ -63,15 +63,15 @@ def test_join_ways_different_directions(grid, l1, l2, d):
     ])
 
     assert route == rt.RouteSegment(
-        length=20, appendices = [],
+        length=20, start=0, appendices = [],
         main=[rt.WaySegment(
-                length=10,
-                ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=10,
+                length=10, start=0,
+                ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=10, start=0,
                                  direction=0, role='', geom=g.line('12'))]
                 ),
               rt.WaySegment(
-                length=10,
-                ways=[rt.BaseWay(osm_id=2, tags=TagStore(), length=10,
+                length=10, start=10,
+                ways=[rt.BaseWay(osm_id=2, tags=TagStore(), length=10, start=10,
                                  direction=1, role='', geom=g.line('234'))]
                 )
              ]

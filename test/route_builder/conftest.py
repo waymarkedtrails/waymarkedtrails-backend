@@ -10,7 +10,8 @@ class Grid:
     """ Allows to define a point grid, which then can be used to create
         geometries.
     """
-    def __init__(self, description, origin=(10, 30), spacing=0.001):
+    # Coordinates are in mercator, so don't reduce spacing too much.
+    def __init__(self, description, origin=(10, 30), spacing=1.0):
         self.nodes = {}
         for x, l in enumerate(description.splitlines()):
             for y, c in enumerate(l):

@@ -4,12 +4,32 @@
 # Copyright (C) 2024 Sarah Hoffmann
 """ Container for a simple OSM way.
 """
+import math
 from dataclasses import dataclass
 
 from osgende.common.tags import TagStore
 from shapely import LineString
 
 from ..common.json_writer import JsonWriter
+
+def _dist(p0, p1) -> int:
+    """ Appoximation of distance between two points in Mercator.
+        Euclidean distance is good enough here to estimate size of holes.
+    """
+    x = p0[0] - p1[0]
+    y = p0[1] - p1[1]
+    return int(math.sqrt(x * x + y * y))
+
+
+def _adjust_start_segment_list(start, start_pt, segments):
+    for s in segments:
+        if start_pt != s.first:
+            start += _dist(start_pt, s.first)
+        start = s.adjust_start_point(start)
+        start_pt = s.last
+
+    return start
+
 
 @dataclass
 class BaseWay:
@@ -53,6 +73,13 @@ class BaseWay:
         """
         self.geom = self.geom.reverse()
         self.direction = -self.direction
+
+    def adjust_start_point(self, start: int) -> None:
+        """ Set own start point to the given value and recursively
+            adjust the start points of all child segments.
+        """
+        self.start = start
+        return start + self.length
 
     def to_json(self) -> str:
         return JsonWriter().start_object()\
@@ -114,6 +141,13 @@ class WaySegment:
         self.ways.reverse()
         for w in self.ways:
             w.reverse()
+
+    def adjust_start_point(self, start: int) -> None:
+        """ Set own start point to the given value and recursively
+            adjust the start points of all child segments.
+        """
+        self.start = start
+        return _adjust_start_segment_list(start, self.first, self.ways)
 
     def append_way(self, way: BaseWay) -> bool:
         """ Try to append the given way at the end of the segment.
@@ -212,7 +246,13 @@ class SplitSegment:
             s.reverse()
         self.length = sum(s.length for s in self.forward)
 
-
+    def adjust_start_point(self, start: int) -> None:
+        """ Set own start point to the given value and recursively
+            adjust the start points of all child segments.
+        """
+        self.start = start
+        return max(_adjust_start_segment_list(start, self.first, s) + _dist(self.last, s[-1].last)
+                   for s in (self.backward, self.forward))
 
     def to_json(self) -> str:
         out = JsonWriter().start_object()\
@@ -272,6 +312,23 @@ class RouteSegment:
         for s in self.main:
             s.reverse()
         # XXX effect on appendices?
+
+    def adjust_start_point(self, start: int) -> int:
+        """ Set own start point to the given value and recursively
+            adjust the start points of all child segments.
+
+            Returns the start point for the next segment.
+        """
+        end = _adjust_start_segment_list(start, self.first, self.main)
+
+        if self.start is not None:
+            rel_adjustment = start - self.start
+            # XXX is that right?
+            for s in self.appendices:
+                s.adjust_start_point(s.start + rel_adjustment)
+
+        self.start = start
+        return end
 
     def to_json(self) -> str:
         out = JsonWriter().start_object()\

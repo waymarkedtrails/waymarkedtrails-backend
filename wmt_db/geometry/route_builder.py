@@ -39,9 +39,11 @@ def build_route(members: list[rt.BaseWay | rt.RouteSegment]) -> rt.RouteSegment:
     _join_oneways(mains)
     _flip_order(mains)
 
-    return rt.RouteSegment(length=sum(seg.length for seg in mains),
-                           main=mains, appendices=appendices)
+    route = rt.RouteSegment(length=sum(seg.length for seg in mains),
+                            main=mains, appendices=appendices)
+    route.adjust_start_point(0)
 
+    return route
 
 
 def _ways_to_segments(members: list[rt.BaseWay | rt.RouteSegment]
