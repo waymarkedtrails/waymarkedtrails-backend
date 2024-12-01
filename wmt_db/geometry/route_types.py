@@ -276,22 +276,55 @@ class SplitSegment:
 
 
 @dataclass
+class AppendixSegment:
+    """ A linear section that does not belong to the main route. May contain gaps.
+    """
+    length: int
+    """ Length of the main route excluding gaps between segments. """
+    main: 'list[WaySegment | RouteSegment | SplitSegment]'
+    """ Linear sequence of segments constituting the appendix.
+    """
+    start: int | None
+    """ Distance in meters from beginning of route where the appendix begins.
+        When None, then the appendix is not connected to the route at all.
+    """
+    end: int | None
+    """ Distance in meters from beginning of route where the appendix rejoins
+        the route. When None, then the appendix is of an approach type.
+        When set, then it is guaranteed to be larger than start,
+        i.e. the segment is guaranteed to go along the direction of the route.
+    """
+
+    @property
+    def role(self) -> str:
+        return self.main[0].role
+
+    @property
+    def first(self) -> tuple[float, float]:
+        return self.main[0].first
+
+    @property
+    def last(self) -> tuple[float, float]:
+        return self.main[-1].last
+
+
+@dataclass
 class RouteSegment:
     """ A complete route or route leg with splits, alternatives,
         approaches and gaps.
     """
     length: int
     """ Length of the main route excluding gaps between segments. """
-    main: 'list[AnySegment]'
+    main: 'list[WaySegment | RouteSegment | SplitSegment]'
     """ Linear sequence of segments constituting the main route.
     """
-    appendices: 'list[WaySegment | RouteSegment]'
-    """ List of excursions and approaches for the route. The role
+    appendices: 'list[AppendixSegment]'
+    """ List of excursions, approaches and alternatives for the route. The role
         must contain the type of approach.
     """
     role: str | None = None
     """ Optional role of the way within the relation. """
-    start: float | None = None
+    start: int | None = None
     """ Distance from beginning of route.
         (Either in meter or in number of members in the relation.)
     """
@@ -353,5 +386,5 @@ class RouteSegment:
         return out()
 
 
-
+BaseSegment = WaySegment | RouteSegment
 AnySegment = WaySegment | RouteSegment | SplitSegment
