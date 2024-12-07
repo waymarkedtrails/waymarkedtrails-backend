@@ -76,3 +76,49 @@ def test_join_ways_different_directions(grid, l1, l2, d):
                 )
              ]
         )
+
+
+def test_single_relation(grid):
+    g = grid("1 2 3")
+    members = [
+        rt.RouteSegment(
+            length=10, start=0, appendices = [],
+            main=[rt.WaySegment(
+                length=10, start=0,
+                ways=[rt.BaseWay(1, {}, 10, 0, g.line('123'), '')])])
+    ]
+    route = build_route(members)
+
+    assert route == rt.RouteSegment(
+        length=10, start=0, appendices = [],
+        main=[rt.RouteSegment(
+                length=10, start=0, appendices = [],
+                main=[rt.WaySegment(
+                    length=10, start=0,
+                    ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=10, start=0,
+                                     direction=0, role='', geom=g.line('123'))])])])
+
+
+def test_all_members_with_roles(grid):
+    g = grid("1 2 3 4")
+    route = build_route([
+        rt.BaseWay(1, {}, 10, 0, g.line('12'), 'approach'),
+        rt.BaseWay(2, {}, 10, 0, g.line('234'), 'link')
+    ])
+
+    assert route == rt.RouteSegment(
+        length=20, start=0, appendices = [],
+        main=[rt.WaySegment(
+                length=10, start=0,
+                ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=10, start=0,
+                                 direction=0, role='', geom=g.line('12'))]
+                ),
+              rt.WaySegment(
+                length=10, start=10,
+                ways=[
+                      rt.BaseWay(osm_id=2, tags=TagStore(), length=10, start=10,
+                                 direction=0, role='', geom=g.line('234'))]
+                )
+             ]
+        )
+

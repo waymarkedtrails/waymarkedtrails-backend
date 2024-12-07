@@ -2,8 +2,6 @@
 #
 # This file is part of the Waymarked Trails Map Project
 # Copyright (C) 2024 Sarah Hoffmann
-import json
-
 import pytest
 
 from osgende.common.tags import TagStore

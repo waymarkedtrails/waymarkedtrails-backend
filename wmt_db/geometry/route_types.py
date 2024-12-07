@@ -244,6 +244,10 @@ class SplitSegment:
     """ Distance from beginning of route in meters.
     """
 
+    @property
+    def direction(self) -> int:
+        return 0
+
     def is_reversable(self) -> bool:
         return True
 
@@ -322,6 +326,14 @@ class AppendixSegment:
     def last(self) -> tuple[float, float]:
         return self.main[-1].last
 
+    def adjust_start_point(self, start: int) -> int:
+        """ Set own start point to the given value and recursively
+            adjust the start points of all child segments.
+
+            Returns the start point for the next segment.
+        """
+        return _adjust_start_segment_list(start, self.first, self.main)
+
     def to_json(self) -> str:
         return JsonWriter().start_object()\
                 .keyval('route_type', self.ROUTE_TYPE)\
@@ -375,6 +387,7 @@ class RouteSegment:
         return True  # XXX only without appendices?
 
     def reverse(self) -> None:
+        self.direction = -self.direction
         self.main.reverse()
         for s in self.main:
             s.reverse()
@@ -392,7 +405,8 @@ class RouteSegment:
             rel_adjustment = start - self.start
             # XXX is that right?
             for s in self.appendices:
-                s.adjust_start_point(s.start + rel_adjustment)
+                if s.start is not None:
+                    s.adjust_start_point(s.start + rel_adjustment)
 
         self.start = start
         return end

@@ -27,6 +27,21 @@ def build_route(members: list[rt.BaseWay | rt.RouteSegment]) -> rt.RouteSegment:
 
     mains, appendices = _split_off_main_route(members)
 
+    # no mains found? Odd. Then build the way as if no roles were given.
+    if not mains:
+        if not appendices:
+            return None
+
+        for sub in appendices:
+            for seg in sub:
+                if isinstance(seg, rt.RouteSegment):
+                    seg.role = ''
+                else:
+                    for w in seg.ways:
+                        w.role = ''
+                mains.append(seg)
+        appendices = []
+
     _join_oneways(mains)
     _flip_order(mains)
 
@@ -53,7 +68,7 @@ def _split_off_main_route(members: list[rt.BaseSegment]
 
     for m in members:
         if m.role:
-            if isinstance(m, RouteSegment):
+            if isinstance(m, rt.RouteSegment):
                 if current_appendix:
                     appendices.append(current_appendix)
                     current_appendix = []
@@ -377,5 +392,5 @@ def _add_appendix_to_route(route: rt.RouteSegment, segments: list[rt.BaseSegment
 
     # XXX no joining of segments and no joining to route yet
     for seg in segments:
-        route.appendices.append(rt.AppenixSegment(length=seg.length, start=None, end=None,
-                                                  main=[seg]))
+        route.appendices.append(rt.AppendixSegment(length=seg.length, start=None, end=None,
+                                                   main=[seg]))
