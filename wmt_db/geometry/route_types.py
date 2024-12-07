@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 from osgende.common.tags import TagStore
 from shapely import LineString
+from shapely.geometry import shape
 
 from ..common.json_writer import JsonWriter
 
@@ -35,6 +36,8 @@ def _adjust_start_segment_list(start, start_pt, segments):
 class BaseWay:
     """ Container for a single OSM way.
     """
+    ROUTE_TYPE = 'base'
+
     osm_id: int
     """ OSM Way ID for the segment. """
     tags: TagStore
@@ -83,7 +86,7 @@ class BaseWay:
 
     def to_json(self) -> str:
         return JsonWriter().start_object()\
-                .keyval('route_type', 'base')\
+                .keyval('route_type', self.ROUTE_TYPE)\
                 .keyval('start', self.start)\
                 .keyval('id', self.osm_id)\
                 .keyval('tags', self.tags)\
@@ -96,6 +99,13 @@ class BaseWay:
                     .end_object().next()\
                 .end_object()()
 
+    @staticmethod
+    def from_json_dict(obj) -> 'BaseWay':
+        return BaseWay(osm_id=obj['id'], tags=TagStore(obj['tags']),
+                       length=obj['length'], direction=obj['direction'],
+                       geom=shape(obj['geometry']),
+                       role=obj['role'], start=obj['start'])
+
 
 @dataclass
 class WaySegment:
@@ -103,6 +113,7 @@ class WaySegment:
         of way. The BaseWays must have compatible attributes in terms of
         direction and role.
     """
+    ROUTE_TYPE = 'linear'
     length: int
     """ Length in meters. """
     ways: list[BaseWay]
@@ -187,18 +198,17 @@ class WaySegment:
         return False
 
     def to_json(self) -> str:
-        out = JsonWriter().start_object()\
-                .keyval('route_type', 'linear')\
+        return JsonWriter().start_object()\
+                .keyval('route_type', self.ROUTE_TYPE)\
                 .keyval('start', self.start)\
                 .keyval('length', self.length)\
-                .key('ways').start_array()
+                .key('ways').object_array(self.ways).next()\
+                .end_object()()
 
-        for seg in self.ways:
-            out.raw(seg.to_json()).next()
-
-        out.end_array().next().end_object()
-
-        return out()
+    @staticmethod
+    def from_json_dict(obj) -> 'WaySegment':
+        return WaySegment(length=obj['length'], start=obj['start'],
+                          ways=obj['ways'])
 
 
 
@@ -206,6 +216,8 @@ class WaySegment:
 class SplitSegment:
     """ A segment with different routes for forward and backward.
     """
+    ROUTE_TYPE = 'split'
+
     length: int
     """ Length of forward route.
     """
@@ -255,30 +267,33 @@ class SplitSegment:
                    for s in (self.backward, self.forward))
 
     def to_json(self) -> str:
-        out = JsonWriter().start_object()\
-                .keyval('route_type', 'split')\
+        return JsonWriter().start_object()\
+                .keyval('route_type', self.ROUTE_TYPE)\
                 .keyval('start', self.start)\
                 .keyval('length', self.length)\
-                .key('forward').start_array()
+                .key('first').start_array()\
+                    .float(self.first[0], 2).next()\
+                    .float(self.first[1], 2).end_array().next()\
+                .key('last').start_array()\
+                    .float(self.last[0], 2).next()\
+                    .float(self.last[1], 2).end_array().next()\
+                .key('forward').object_array(self.forward).next()\
+                .key('backward').object_array(self.backward).next()\
+                .end_object()()
 
-        for seg in self.forward:
-            out.raw(seg.to_json()).next()
-
-        out.end_array().next()\
-           .key('backward')
-
-        for seg in self.backward:
-            out.raw(seg.to_json()).next()
-
-        out.end_array().next().end_object()
-
-        return out()
+    @staticmethod
+    def from_json_dict(obj) -> 'SplitSegment':
+        return SplitSegment(length=obj['length'], start=obj['start'],
+                            first=tuple(obj['first']), last=tuple(obj['last']),
+                            forward=obj['forward'], backward=obj['backward'])
 
 
 @dataclass
 class AppendixSegment:
     """ A linear section that does not belong to the main route. May contain gaps.
     """
+    ROUTE_TYPE = 'appendix'
+
     length: int
     """ Length of the main route excluding gaps between segments. """
     main: 'list[WaySegment | RouteSegment | SplitSegment]'
@@ -307,12 +322,28 @@ class AppendixSegment:
     def last(self) -> tuple[float, float]:
         return self.main[-1].last
 
+    def to_json(self) -> str:
+        return JsonWriter().start_object()\
+                .keyval('route_type', self.ROUTE_TYPE)\
+                .keyval_not_none('start', self.start)\
+                .keyval_not_none('end', self.end)\
+                .keyval('length', self.length)\
+                .key('main').object_array(self.main).next()\
+                .end_object()()
+
+    @staticmethod
+    def from_json_dict(obj) -> 'AppendixSegment':
+        return AppendixSegment(start=obj.get('start'), end=obj.get('end'),
+                               length=obj['length'], main=obj['main'])
+
 
 @dataclass
 class RouteSegment:
     """ A complete route or route leg with splits, alternatives,
         approaches and gaps.
     """
+    ROUTE_TYPE = 'route'
+
     length: int
     """ Length of the main route excluding gaps between segments. """
     main: 'list[WaySegment | RouteSegment | SplitSegment]'
@@ -364,27 +395,32 @@ class RouteSegment:
         return end
 
     def to_json(self) -> str:
-        out = JsonWriter().start_object()\
-                .keyval('route_type', 'route')\
+        return JsonWriter().start_object()\
+                .keyval('route_type', self.ROUTE_TYPE)\
                 .keyval('length', self.length)\
                 .keyval('start', self.start)\
-                .keyval('role', self.role or '')\
-                .key('main').start_array()
+                .keyval_not_none('role', self.role)\
+                .key('main').object_array(self.main).next()\
+                .key('appendices').object_array(self.appendices).next()\
+                .end_object()()
 
-        for seg in self.main:
-            out.raw(seg.to_json()).next()
-
-        out.end_array().next()
-
-        out.key('appendices').start_array()
-
-        for seg in self.appendices:
-            out.raw(seg.to_json()).next()
-
-        out.end_array().next().end_object()
-
-        return out()
+    @staticmethod
+    def from_json_dict(obj) -> 'RouteSegment':
+        return RouteSegment(start=obj['start'], length=obj['length'],
+                            role=obj.get('role'), main=obj['main'],
+                            appendices=obj['appendices'])
 
 
 BaseSegment = WaySegment | RouteSegment
 AnySegment = WaySegment | RouteSegment | SplitSegment
+
+ROUTE_TYPE_TO_CLASS = {c.ROUTE_TYPE: c for c in (BaseWay, WaySegment, SplitSegment,
+                                                 AppendixSegment, RouteSegment)}
+
+def json_decoder_hook(obj):
+    """ object_hook for `json.load()` which creates route objects.
+    """
+    oclass = ROUTE_TYPE_TO_CLASS.get(obj.get('route_type'))
+    if oclass is not None:
+        return oclass.from_json_dict(obj)
+    return obj

@@ -137,3 +137,13 @@ class JsonWriter:
             self.value(transform(value) if transform else value)
             self.next()
         return self
+
+    def object_array(self, values: list[object]) -> 'JsonWriter':
+        """ Write out an array of objects that have a to_json() function
+            to produce raw json.
+        """
+        self.start_array()
+        for v in values:
+            self.raw(v.to_json()).next()
+        self.end_array()
+        return self
