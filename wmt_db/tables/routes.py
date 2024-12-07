@@ -18,6 +18,8 @@ from osgende.common.tags import TagStore
 
 from ..common.route_types import Network
 from ..common.data_transforms import make_itinerary, make_geometry
+from ..geometry.route_builder import build_route
+from ..geometry.member_loader import get_relation_objects
 
 @dataclasses.dataclass
 class RouteRow:
@@ -54,6 +56,7 @@ class Routes(ThreadableDBObject, TableSource):
                          sa.Column('level', sa.SmallInteger),
                          sa.Column('top', sa.Boolean),
                          sa.Column('rel_members', ARRAY(sa.BigInteger)),
+                         sa.Column('route', sa.String),
                          sa.Column('geom', Geometry('GEOMETRY', srid=ways.srid)),
                          sa.Column('render_geom', Geometry('GEOMETRY', srid=ways.srid,
                                                            spatial_index=False)))
@@ -279,6 +282,10 @@ class Routes(ThreadableDBObject, TableSource):
         if geom is None:
             return None
 
+        route_members = get_relation_objects(conn, members, self.ways, self.data)
+        assert len(route_members) > 0
+        route = build_route(route_members)
+
         # find the country
         outtags.country = self._find_country(relids, geom)
 
@@ -310,5 +317,6 @@ class Routes(ThreadableDBObject, TableSource):
         outtags = dataclasses.asdict(outtags)
         outtags['geom'] = geom
         outtags['render_geom'] = render_geom
+        outtags['route'] = route.to_json()
 
         return outtags

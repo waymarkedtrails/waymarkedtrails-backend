@@ -353,6 +353,9 @@ class RouteSegment:
     """ List of excursions, approaches and alternatives for the route. The role
         must contain the type of approach.
     """
+    direction: int = 0
+    """ Direction of the route within a larger route.
+    """
     role: str | None = None
     """ Optional role of the way within the relation. """
     start: int | None = None

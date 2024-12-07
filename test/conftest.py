@@ -7,7 +7,7 @@ import os
 
 import pytest
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from geoalchemy2 import Geometry
 
 import osgende
@@ -130,6 +130,7 @@ def segment_table(mapdb):
                                      sa.Column('id', sa.BigInteger),
                                      sa.Column('nodes', ARRAY(sa.BigInteger)),
                                      sa.Column('rels', ARRAY(sa.BigInteger)),
+                                     sa.Column('tags', JSONB),
                                      sa.Column('geom', Geometry('LINESTRING', 4326))
                                     ), change_table='way_changeset'))
     table.srid = 4326

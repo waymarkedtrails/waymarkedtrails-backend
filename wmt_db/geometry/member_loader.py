@@ -4,6 +4,7 @@
 # Copyright (C) 2024 Sarah Hoffmann
 """ Main function for building a complex route geometry.
 """
+import json
 from copy import deepcopy
 
 import sqlalchemy as sa
@@ -22,12 +23,31 @@ def get_relation_objects(conn, members, way_table, route_table):
     """
     data = {}
 
-    ways = {m['id']: m['role'] for m in members if m['type'] == 'W'}
-
+    ways = [m['id'] for m in members if m['type'] == 'W']
     if ways:
-        data.update(_extract_ways(conn, ways, way_table))
+        t = way_table
+        sql = sa.select(t.c.id, t.c.geom, t.c.tags,
+                        sa.func.ST_Length(sa.func.ST_Transform(t.c.geom, 4326)
+                          .cast(Geography)).label('length'))\
+                .where(t.c.id.in_(ways))\
+                .where(t.c.geom is not None)
+        for way in conn.execute(sql):
+            data[('W', way.id)] = rt.BaseWay(osm_id=way.id,
+                                             tags=TagStore(way.tags or {}),
+                                             length=int(way.length), direction=0,
+                                             geom=to_shape(way.geom))
 
-    rels = {m['id']: None for m in members if m['type'] == 'R'}
+
+    rels = [m['id'] for m in members if m['type'] == 'R']
+    if rels:
+        t = route_table
+        sql = sa.select(t.c.id, t.c.route)\
+                .where(t.c.id.in_(rels))\
+                .where(t.c.route is not None)
+
+        for rel in conn.execute(sql):
+            data[('R', rel.id)] = json.loads(rel.route,
+                                             object_hook=rt.json_decoder_hook)
 
     finallist = []
     for i, m in enumerate(members):
@@ -38,34 +58,22 @@ def get_relation_objects(conn, members, way_table, route_table):
             if seg.start is not None:
                 seg = deepcopy(seg)
             seg.start = i
+            seg.direction, seg.role = adjust_role(seg, m['role'])
             finallist.append(seg)
 
     return finallist
 
 
-def _extract_ways(conn, ways: dict[int, str], t: sa.FromClause):
-        sql = sa.select(t.c.id, t.c.geom, t.c.tags,
-                        sa.func.ST_Length(sa.func.ST_Transform(t.c.geom, 4326)
-                          .cast(Geography)).label('length'))\
-                .where(t.c.id.in_(list(ways.keys())))\
-                .where(t.c.geom is not None)
-        for way in conn.execute(sql):
-            geom = to_shape(way.geom)
-            match ways[way.id]:
-                case 'forward':
-                    direction = 1
-                    role = ''
-                case 'backward':
-                    direction = -1
-                    role = ''
-                case 'main':
-                    direction = 0
-                    role = ''
-                case _:
-                    direction = 0
-                    role = ways[way.id].strip()
-            if geom.is_closed and way.tags.get('junction') in ('roundabout', 'circular'):
-               direction = 1
-            yield ('W', way.id), rt.BaseWay(osm_id=way.id, tags=TagStore(way.tags),
-                                           length=int(way.length), direction=direction,
-                                           role=role, geom=geom)
+def adjust_role(seg, role) -> tuple[int, str]:
+    match role:
+        case 'forward':
+            return 1, ''
+        case 'backward':
+            return -1, ''
+
+    outrole = '' if role == 'main' else role.strip()
+    if isinstance(seg, rt.BaseWay) and seg.is_closed\
+            and seg.tags.get('junction') in ('roundabout', 'circular'):
+        return 1, outrole
+
+    return 0, outrole
