@@ -56,6 +56,7 @@ class Routes(ThreadableDBObject, TableSource):
                          sa.Column('level', sa.SmallInteger),
                          sa.Column('top', sa.Boolean),
                          sa.Column('rel_members', ARRAY(sa.BigInteger)),
+                         sa.Column('tags', JSONB),
                          sa.Column('route', sa.String),
                          sa.Column('geom', Geometry('GEOMETRY', srid=ways.srid)),
                          sa.Column('render_geom', Geometry('GEOMETRY', srid=ways.srid,
@@ -318,5 +319,6 @@ class Routes(ThreadableDBObject, TableSource):
         outtags['geom'] = geom
         outtags['render_geom'] = render_geom
         outtags['route'] = route.to_json()
+        outtags['tags'] = obj.tags
 
         return outtags
