@@ -85,7 +85,7 @@ class BaseWay:
         return start + self.length
 
     def to_json(self) -> str:
-        return JsonWriter().start_object()\
+        writer = JsonWriter().start_object()\
                 .keyval('route_type', self.ROUTE_TYPE)\
                 .keyval('start', self.start)\
                 .keyval('id', self.osm_id)\
@@ -95,9 +95,18 @@ class BaseWay:
                 .keyval('role', self.role or '')\
                 .key('geometry').start_object()\
                     .keyval('type', 'LineString')\
-                    .keyval('coordinates', list(self.geom.coords))\
-                    .end_object().next()\
-                .end_object()()
+                    .key('coordinates').start_array()
+
+        for c in self.geom.coords:
+            writer.start_array()\
+                .float(c[0], 2).next()\
+                .float(c[1], 2).end_array()\
+                .next()
+
+        writer.end_array().next().end_object().next()\
+                .end_object()
+
+        return writer()
 
     @staticmethod
     def from_json_dict(obj) -> 'BaseWay':
@@ -300,7 +309,7 @@ class AppendixSegment:
 
     length: int
     """ Length of the main route excluding gaps between segments. """
-    main: 'list[WaySegment | RouteSegment | SplitSegment]'
+    main: 'list[WaySegment | RouteSegment]'
     """ Linear sequence of segments constituting the appendix.
     """
     start: int | None
@@ -337,6 +346,7 @@ class AppendixSegment:
     def to_json(self) -> str:
         return JsonWriter().start_object()\
                 .keyval('route_type', self.ROUTE_TYPE)\
+                .keyval('role', self.role)\
                 .keyval_not_none('start', self.start)\
                 .keyval_not_none('end', self.end)\
                 .keyval('length', self.length)\
@@ -373,6 +383,9 @@ class RouteSegment:
     start: int | None = None
     """ Distance from beginning of route.
         (Either in meter or in number of members in the relation.)
+    """
+    id: int | None = None
+    """ OSM ID of the relation holding the route.
     """
 
     @property
@@ -417,6 +430,7 @@ class RouteSegment:
                 .keyval('length', self.length)\
                 .keyval('start', self.start)\
                 .keyval_not_none('role', self.role)\
+                .keyval_not_none('id', self.id)\
                 .key('main').object_array(self.main).next()\
                 .key('appendices').object_array(self.appendices).next()\
                 .end_object()()
@@ -424,7 +438,7 @@ class RouteSegment:
     @staticmethod
     def from_json_dict(obj) -> 'RouteSegment':
         return RouteSegment(start=obj['start'], length=obj['length'],
-                            role=obj.get('role'), main=obj['main'],
+                            role=obj.get('role'), id=obj.get('id'), main=obj['main'],
                             appendices=obj['appendices'])
 
 

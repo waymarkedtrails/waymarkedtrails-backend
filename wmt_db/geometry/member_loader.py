@@ -46,8 +46,9 @@ def get_relation_objects(conn, members, way_table, route_table):
                 .where(t.c.route is not None)
 
         for rel in conn.execute(sql):
-            data[('R', rel.id)] = json.loads(rel.route,
-                                             object_hook=rt.json_decoder_hook)
+            rte = json.loads(rel.route, object_hook=rt.json_decoder_hook)
+            rte.id = rel.id
+            data[('R', rel.id)] = rte
 
     finallist = []
     for i, m in enumerate(members):
