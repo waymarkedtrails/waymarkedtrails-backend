@@ -65,6 +65,7 @@ def build_route(members: list[rt.BaseWay | rt.RouteSegment]) -> rt.RouteSegment:
         if not (merged and isinstance(merged[-1], rt.SplitSegment) and merged[-1].merge_split(seg)):
             merged.append(seg)
 
+    assert merged
     route = rt.RouteSegment(length=sum(seg.length for seg in merged), main=merged, appendices=[])
     route.adjust_start_point(0)
 
@@ -268,6 +269,7 @@ def _make_roundabout(segments: list[rt.AnySegment], pos: int) -> None:
             ept = 0
 
     fwd_way = shapely.LineString(points[spt:ept + 1] if spt < ept else points[spt:] + points[1:ept + 1])
+    assert fwd_way.length > 0
 
     # backward direction
     if prev is not None:
@@ -297,6 +299,7 @@ def _make_roundabout(segments: list[rt.AnySegment], pos: int) -> None:
             ept = 0
 
     bwd_way = shapely.LineString(points[ept:spt + 1] if ept < spt else points[ept:] + points[1:spt + 1])
+    assert bwd_way.length > 0
 
     fwd = rt.BaseWay(osm_id=seg.osm_id, tags=seg.tags,
                      length=int(round(seg.length*fwd_way.length/seg.geom.length)),
@@ -352,13 +355,17 @@ def _make_simple_splitway(seg: rt.WaySegment, start_points, end_points) -> rt.Sp
     """ Convert a one-way non-circular multi-way WaySegment into a split segment by
         cutting at the most conventient place.
     """
-    if len(seg.ways) <= 1:
+    seglen = len(seg.ways)
+    if seglen <= 1:
         return seg
 
     front_connections = int(seg.first in start_points) + int(seg.last in start_points)
     if front_connections > 0:
         # Create a U-segment with the open ends towards start
         for i, way in enumerate(seg.ways):
+            if i == seglen - 1:
+                # linear connection between prev and next
+                return seg
             if way.last in end_points:
                 si = i + 1
                 break
@@ -383,6 +390,9 @@ def _make_simple_splitway(seg: rt.WaySegment, start_points, end_points) -> rt.Sp
     back_connections = int(seg.last in end_points) + int(seg.first in end_points)
     if back_connections > 0:
         for i, way in enumerate(seg.ways):
+            if i == seglen - 1:
+                # linear connection between prev and next
+                return seg
             if way.last in start_points:
                 si = i + 1
                 break

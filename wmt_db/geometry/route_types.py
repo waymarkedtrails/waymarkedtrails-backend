@@ -195,6 +195,8 @@ class WaySegment:
         """
         fwd_ways = self.ways[:idx]
         bwd_ways = self.ways[idx:]
+        assert fwd_ways
+        assert bwd_ways
 
         return WaySegment(length=sum(s.length for s in fwd_ways), ways = fwd_ways), \
                WaySegment(length=sum(s.length for s in bwd_ways), ways=bwd_ways)
@@ -272,14 +274,13 @@ class SplitSegment:
         return 0
 
     def is_reversable(self) -> bool:
-        return True
+        return len(self.forward) == 1 and len(self.backward) == 1
 
     def is_roundabout(self) -> bool:
         return False
 
     def reverse(self) -> None:
         self.forward, self.backward = self.backward, self.forward
-        self.first, self.last = self.last, self.first
         self.forward.reverse()
         for s in self.forward:
             s.reverse()
@@ -287,6 +288,8 @@ class SplitSegment:
         for s in self.backward:
             s.reverse()
         self.length = sum(s.length for s in self.forward)
+        self.first = self.forward[0].first
+        self.last = self.forward[-1].last
 
     def merge_split(self, other) -> bool:
         """ Try to merge other into this split segment.
