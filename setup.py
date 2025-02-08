@@ -27,5 +27,5 @@ setup(name='waymarkedtrails-backend',
                                   'data/map-styles/**', 'data/map-styles/inc/**',
                                   'data/map-styles/macros/**']},
       scripts=['wmt-makedb'],
-      python_requires = ">=3.6",
+      python_requires = ">=3.10",
       )

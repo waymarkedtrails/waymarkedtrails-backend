@@ -226,7 +226,6 @@ def _process_oneways(segments: rt.BaseSegmentView, outlist: list[rt.AnySegment])
 def _make_roundabout(segments: list[rt.AnySegment], pos: int) -> None:
     """ Build a split section from a single roundabout way.
     """
-    # XXX fix up
     seg = segments[pos].ways[0]
     if seg.direction == -1:
         seg.reverse()
