@@ -154,3 +154,157 @@ def test_roundabout_end(grid, l1):
              ]
         )
 
+def test_roundabout_with_approaches(grid):
+    g = grid("""\
+               6
+         2  3     a   b
+      0 1                c d
+         4  5     8   9
+               7
+    """)
+
+    ways = [('01', 0), ('123', -1), ('145', 1),
+            ('63578a6', 1), ('abc', -1), ('89c', 1), ('cd', 0)]
+
+    route = build_route([rt.BaseWay(oid, {}, len(pts) - 1, dir, g.line(pts), '')
+                         for oid, (pts, dir) in enumerate(ways, start=1)])
+
+    assert route == rt.RouteSegment(
+        length=8, start=0, appendices=[],
+        main=[rt.WaySegment(
+                length=1, start=0,
+                ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=1, start=0,
+                                 direction=0, role='', geom=g.line('01')
+                                )
+                     ]),
+              rt.SplitSegment(
+                length=6, start=1,
+                first=tuple(g.coord('1')),
+                last=tuple(g.coord('c')),
+                forward=[rt.WaySegment(
+                            length=2, start=1,
+                            ways=[rt.BaseWay(osm_id=3, tags=TagStore(), length=2, start=1,
+                                             direction=1, role='', geom=g.line('145')
+                                             )
+                                 ]
+                            ),
+                         rt.WaySegment(
+                            length=2, start=3,
+                            ways=[rt.BaseWay(osm_id=4, tags=TagStore(), length=2, start=3,
+                                             direction=1, role='', geom=g.line('578')
+                                             )
+                                 ]
+                            ),
+                         rt.WaySegment(
+                            length=2, start=5,
+                            ways=[rt.BaseWay(osm_id=6, tags=TagStore(), length=2, start=5,
+                                             direction=1, role='', geom=g.line('89c')
+                                             )
+                                 ]
+                            )
+                        ],
+                backward=[rt.WaySegment(
+                            length=2, start=1,
+                            ways=[rt.BaseWay(osm_id=2, tags=TagStore(), length=2, start=1,
+                                             direction=-1, role='', geom=g.line('123')
+                                             )
+                                 ]
+                            ),
+                          rt.WaySegment(
+                            length=2, start=3,
+                            ways=[rt.BaseWay(osm_id=4, tags=TagStore(), length=2, start=3,
+                                             direction=-1, role='', geom=g.line('36a')
+                                             )
+                                 ]
+                            ),
+                          rt.WaySegment(
+                            length=2, start=5,
+                            ways=[rt.BaseWay(osm_id=5, tags=TagStore(), length=2, start=5,
+                                             direction=-1, role='', geom=g.line('abc')
+                                             )
+                                 ]
+                            )
+                         ]
+                ),
+              rt.WaySegment(
+                length=1, start=7,
+                ways=[rt.BaseWay(osm_id=7, tags=TagStore(), length=1, start=7,
+                                 direction=0, role='', geom=g.line('cd')
+                                )
+                     ])
+            ])
+
+
+def test_roundabout_in_forward(grid):
+    g = grid("""/
+    x 0             9 y
+             a
+       1   b   d  2
+             c
+    """)
+
+    ways = [('x0', 0), ('09', -1), ('01b', 1), ('abcda', 1), ('d29', 1), ('9y', 0)]
+
+    route = build_route([rt.BaseWay(oid, {}, len(pts) - 1, dir, g.line(pts), '')
+                         for oid, (pts, dir) in enumerate(ways, start=1)])
+
+    assert route == rt.RouteSegment(
+        length=8, start=0, appendices=[],
+        main=[rt.WaySegment(
+                length=1, start=0,
+                ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=1, start=0,
+                                 direction=0, role='', geom=g.line('x0')
+                                )
+                     ]
+                ),
+              rt.SplitSegment(
+                length=6, start=1,
+                first=tuple(g.coord('0')),
+                last=tuple(g.coord('9')),
+                forward=[rt.WaySegment(
+                            length=6, start=1,
+                            ways=[rt.BaseWay(osm_id=3, tags=TagStore(), length=2, start=1,
+                                             direction=1, role='', geom=g.line('01b')
+                                            ),
+                                  rt.BaseWay(osm_id=4, tags=TagStore(), length=2, start=3,
+                                             direction=1, role='', geom=g.line('bcd')
+                                            ),
+                                  rt.BaseWay(osm_id=5, tags=TagStore(), length=2, start=5,
+                                             direction=1, role='', geom=g.line('d29')
+                                            )
+                                 ]
+                            )
+                ],
+                backward=[rt.WaySegment(
+                            length=1, start=1,
+                            ways=[rt.BaseWay(osm_id=2, tags=TagStore(), length=1, start=1,
+                                             direction=-1, role='', geom=g.line('09')
+                                            )
+                                 ]
+                            )
+                ]
+              ),
+             rt.WaySegment(
+                length=1, start=7,
+                ways=[rt.BaseWay(osm_id=6, tags=TagStore(), length=1, start=7,
+                                 direction=0, role='', geom=g.line('9y')
+                                )
+                     ]
+                )
+        ])
+
+
+def test_roundabout_in_looping_oneway_segment(grid):
+    g = grid("""/
+              a
+         2 f     b  7
+    0 1                8
+         3 e     c  9
+              d
+    """)
+
+    ways = [('01', 0), ('13e', 1), ('f21', 1), ('abcdef', -1), ('c987b', 1)]
+
+    route = build_route([rt.BaseWay(oid, {}, len(pts) - 1, dir, g.line(pts), '')
+                         for oid, (pts, dir) in enumerate(ways, start=1)])
+

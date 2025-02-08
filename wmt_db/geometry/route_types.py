@@ -6,6 +6,7 @@
 """
 import math
 from dataclasses import dataclass
+from collections import abc
 
 from osgende.common.tags import TagStore
 from shapely import LineString
@@ -157,6 +158,9 @@ class WaySegment:
     def is_reversable(self) -> bool:
         return len(self.ways) == 1 and self.first != self.last
 
+    def is_roundabout(self) -> bool:
+        return len(self.ways) == 1 and self.ways[0].direction != 0 and self.ways[0].is_closed
+
     def reverse(self) -> None:
         self.ways.reverse()
         for w in self.ways:
@@ -184,6 +188,16 @@ class WaySegment:
             return True
 
         return False
+
+
+    def split_way(self, idx: int) -> 'tuple[WaySegment, WaySegment]':
+        """ Split the way into two segments.
+        """
+        fwd_ways = self.ways[:idx]
+        bwd_ways = self.ways[idx:]
+
+        return WaySegment(length=sum(s.length for s in fwd_ways), ways = fwd_ways), \
+               WaySegment(length=sum(s.length for s in bwd_ways), ways=bwd_ways)
 
     def _can_add_directional(self, way: BaseWay) -> bool:
         if way.first == self.last:
@@ -260,6 +274,9 @@ class SplitSegment:
     def is_reversable(self) -> bool:
         return True
 
+    def is_roundabout(self) -> bool:
+        return False
+
     def reverse(self) -> None:
         self.forward, self.backward = self.backward, self.forward
         self.first, self.last = self.last, self.first
@@ -270,6 +287,21 @@ class SplitSegment:
         for s in self.backward:
             s.reverse()
         self.length = sum(s.length for s in self.forward)
+
+    def merge_split(self, other) -> bool:
+        """ Try to merge other into this split segment.
+            Return true, if that was possible.
+        """
+        if isinstance(other, SplitSegment) \
+           and self.forward[-1].last == other.forward[0].first \
+           and self.backward[-1].last == other.backward[0].first:
+            self.forward.extend(other.forward)
+            self.backward.extend(other.backward)
+            self.length += other.length
+            self.last = other.last
+            return True
+
+        return False
 
     def adjust_start_point(self, start: int) -> None:
         """ Set own start point to the given value and recursively
@@ -399,6 +431,9 @@ class RouteSegment:
     def is_reversable(self) -> bool:
         return True  # XXX only without appendices?
 
+    def is_roundabout(self) -> bool:
+        return False
+
     def reverse(self) -> None:
         self.direction = -self.direction
         self.main.reverse()
@@ -443,7 +478,44 @@ class RouteSegment:
 
 
 BaseSegment = WaySegment | RouteSegment
+BaseSegmentList = list[BaseSegment]
 AnySegment = WaySegment | RouteSegment | SplitSegment
+
+class BaseSegmentView(abc.Sequence[BaseSegment]):
+    """ Unmutable view of a portion of a list of basic segments. The
+        start index is inclusive and the end index exclusive, like usual
+        array slice indexes.
+
+        If the underlying list is changed, behaviour is undefined.
+    """
+
+    def __init__(self, base: BaseSegmentList, start: int, end: int, oneway: bool=False) -> None:
+        self.base = base
+        self.start = start
+        self.end = end
+        self.oneway = oneway
+
+    def __len__(self) -> int:
+        return self.end - self.start
+
+    def __getitem__(self, idx: int) -> BaseSegment:
+        if idx < 0:
+            absidx = self.end + idx
+            if absidx < self.start:
+                raise IndexError
+        else:
+            absidx = self.start + idx
+            if absidx >= self.end:
+                raise IndexError
+
+        return self.base[absidx]
+
+    def get_predecessor(self, idx: int=1) -> BaseSegment | None:
+        return self.base[self.start - idx] if idx <= self.start else None
+
+    def get_successor(self, idx: int=1) -> BaseSegment | None:
+        return self.base[self.end + idx - 1] if self.end + idx - 1 < len(self.base) else None
+
 
 ROUTE_TYPE_TO_CLASS = {c.ROUTE_TYPE: c for c in (BaseWay, WaySegment, SplitSegment,
                                                  AppendixSegment, RouteSegment)}
