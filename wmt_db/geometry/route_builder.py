@@ -66,7 +66,9 @@ def build_route(members: list[rt.BaseWay | rt.RouteSegment]) -> rt.RouteSegment:
             merged.append(seg)
 
     assert merged
-    route = rt.RouteSegment(length=sum(seg.length for seg in merged), main=merged, appendices=[])
+    route = rt.RouteSegment(length=sum(seg.length for seg in merged),
+                            main=_make_linear(merged),
+                            appendices=[])
     route.adjust_start_point(0)
 
     for appendix in appendices:
@@ -512,6 +514,59 @@ def _make_oneways_directional(segments: rt.BaseSegmentView, start_points, end_po
 
     return out_segments
 
+
+def _make_linear(segments: list[rt.AnySegment]):
+    """ Reorder the segments if necessary to make them a linear route.
+        If there is no linear order possible, the route remains as is.
+    """
+    # create sublist of linear segments
+    sublists = []
+    prev = None
+    current_start = 0
+    for i, seg in enumerate(segments):
+        if current_start < i and prev != seg.first:
+            sublists.append(segments[current_start:i])
+            current_start = i
+        prev = seg.last
+
+    if current_start == 0:
+        return segments # already perfectly linear
+
+    if current_start < len(segments):
+        sublists.append(segments[current_start:])
+
+    assert len(segments) == sum(len(s) for s in sublists)
+
+    while len(sublists) > 1:
+        cur = sublists.pop()
+        # first try to keep direction
+        for l in sublists:
+            if l[-1].last == cur[0].first:
+                l.extend(cur)
+                break
+            if l[0].first == cur[-1].last:
+                l[:0] = cur
+                break
+        else:
+            # then try with reversing
+            for l in sublists:
+                if l[-1].last == cur[-1].last:
+                    cur.reverse()
+                    for sub in cur:
+                        sub.reverse()
+                    l.extend(cur)
+                    break
+                if l[0].first == cur[0].first:
+                    cur.reverse()
+                    for sub in cur:
+                        sub.reverse()
+                    l[:0] = cur
+                    break
+            else:
+                return segments # couldn't merge
+
+    assert len(sublists[0]) == len(segments)
+    return sublists[0]
 
 def _add_appendix_to_route(route: rt.RouteSegment, segments: list[rt.BaseSegment]) -> None:
     """ Take a list of RouteSegments and WaySegments with the same role

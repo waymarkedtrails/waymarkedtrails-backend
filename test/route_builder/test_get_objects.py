@@ -187,4 +187,5 @@ class TestGetRelationObjectsWaysAndRels:
         objs = self.run_test(mapdb, [('R', 23, ''), ('N', 444, '')])
 
         route.role = ''
+        route.id = 23
         assert objs == [route]
