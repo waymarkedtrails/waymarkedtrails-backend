@@ -34,7 +34,7 @@ SQLAlchemy is needed in version 2.0+.
 
 On Ubuntu 24.04/Debian 12 the following should install all prerequisites:
 
-    sudo apt install python3-psycopg2 python3-shapely python3-pip \
+    sudo apt install python3-psycopg2 python3-pip \
                      python3-gi python3-gi-cairo \
                      libcairo2-dev gir1.2-pango-1.0 gir1.2-rsvg-2.0 \
                      gcc libcairo2-dev pkg-config python3-dev \
@@ -45,7 +45,7 @@ Then install the remaining dependencies in a virtual environment:
     virtualenv -p python3 --system-site-packages wmtenv
     . wmtenv/bin/activate
 
-    pip install -U osmium PyCairo \
+    pip install -U osmium PyCairo shapely \
                    SQLAlchemy GeoAlchemy2 \
                    git+https://github.com/waymarkedtrails/osgende@master \
                    git+https://github.com/waymarkedtrails/waymarkedtrails-shields@master

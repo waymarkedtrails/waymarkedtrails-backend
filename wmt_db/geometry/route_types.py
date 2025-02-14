@@ -403,6 +403,9 @@ class RouteSegment:
 
     length: int
     """ Length of the main route excluding gaps between segments. """
+    linear: str
+    """ Whether the relation makes a linear route: yes|no|sorted
+    """
     main: 'list[WaySegment | RouteSegment | SplitSegment]'
     """ Linear sequence of segments constituting the main route.
     """
@@ -444,6 +447,24 @@ class RouteSegment:
             s.reverse()
         # XXX effect on appendices?
 
+    def get_linear_state(self) -> str:
+        """ Return the linear state of the complete route.
+            This function also checks the state of subroutes and
+            adds them up.
+        """
+        min_state = self.linear
+
+        if self.linear != 'no':
+            for sub in self.main:
+                if isinstance(sub, RouteSegment):
+                    sub_state = sub.get_linear_state()
+                    if sub_state == 'no':
+                        return 'no'
+                    elif sub_state == 'sorted':
+                        min_state = 'sorted'
+
+        return min_state
+
     def adjust_start_point(self, start: int) -> int:
         """ Set own start point to the given value and recursively
             adjust the start points of all child segments.
@@ -466,6 +487,7 @@ class RouteSegment:
         return JsonWriter().start_object()\
                 .keyval('route_type', self.ROUTE_TYPE)\
                 .keyval('length', self.length)\
+                .keyval('linear' , self.linear)\
                 .keyval('start', self.start)\
                 .keyval_not_none('role', self.role)\
                 .keyval_not_none('id', self.id)\
@@ -477,7 +499,7 @@ class RouteSegment:
     def from_json_dict(obj) -> 'RouteSegment':
         return RouteSegment(start=obj['start'], length=obj['length'],
                             role=obj.get('role'), id=obj.get('id'), main=obj['main'],
-                            appendices=obj['appendices'])
+                            linear=obj.get('linear'), appendices=obj['appendices'])
 
 
 BaseSegment = WaySegment | RouteSegment

@@ -58,6 +58,7 @@ class Routes(ThreadableDBObject, TableSource):
                          sa.Column('rel_members', ARRAY(sa.BigInteger)),
                          sa.Column('tags', JSONB),
                          sa.Column('route', sa.String),
+                         sa.Column('linear', sa.String),
                          sa.Column('geom', Geometry('GEOMETRY', srid=ways.srid)),
                          sa.Column('render_geom', Geometry('GEOMETRY', srid=ways.srid,
                                                            spatial_index=False)))
@@ -319,6 +320,7 @@ class Routes(ThreadableDBObject, TableSource):
         outtags['geom'] = geom
         outtags['render_geom'] = render_geom
         outtags['route'] = route.to_json()
+        outtags['linear'] = route.get_linear_state()
         outtags['tags'] = obj.tags
 
         return outtags

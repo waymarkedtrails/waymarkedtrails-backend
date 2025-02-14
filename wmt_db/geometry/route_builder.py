@@ -24,7 +24,8 @@ def build_route(members: list[rt.BaseWay | rt.RouteSegment]) -> rt.RouteSegment:
 
     if len(members) == 1:
         members[0].adjust_start_point(0)
-        return rt.RouteSegment(length=members[0].length, main=members, appendices=[], start=0)
+        return rt.RouteSegment(length=members[0].length, linear='yes',
+                               main=members, appendices=[], start=0)
 
     simple_mains, appendices = _split_off_main_route(members)
 
@@ -66,8 +67,10 @@ def build_route(members: list[rt.BaseWay | rt.RouteSegment]) -> rt.RouteSegment:
             merged.append(seg)
 
     assert merged
+
+    merged, linear = _make_linear(merged)
     route = rt.RouteSegment(length=sum(seg.length for seg in merged),
-                            main=_make_linear(merged),
+                            main=merged, linear=linear,
                             appendices=[])
     route.adjust_start_point(0)
 
@@ -515,7 +518,7 @@ def _make_oneways_directional(segments: rt.BaseSegmentView, start_points, end_po
     return out_segments
 
 
-def _make_linear(segments: list[rt.AnySegment]):
+def _make_linear(segments: list[rt.AnySegment]) -> tuple[list[rt.AnySegment], str]:
     """ Reorder the segments if necessary to make them a linear route.
         If there is no linear order possible, the route remains as is.
     """
@@ -530,7 +533,7 @@ def _make_linear(segments: list[rt.AnySegment]):
         prev = seg.last
 
     if current_start == 0:
-        return segments # already perfectly linear
+        return segments, 'yes' # already perfectly linear
 
     if current_start < len(segments):
         sublists.append(segments[current_start:])
@@ -563,10 +566,10 @@ def _make_linear(segments: list[rt.AnySegment]):
                     l[:0] = cur
                     break
             else:
-                return segments # couldn't merge
+                return segments, 'no' # couldn't merge
 
     assert len(sublists[0]) == len(segments)
-    return sublists[0]
+    return sublists[0], 'sorted'
 
 def _add_appendix_to_route(route: rt.RouteSegment, segments: list[rt.BaseSegment]) -> None:
     """ Take a list of RouteSegments and WaySegments with the same role
