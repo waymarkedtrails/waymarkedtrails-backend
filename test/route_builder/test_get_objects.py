@@ -175,7 +175,7 @@ class TestGetRelationObjectsWaysAndRels:
         g = grid('1 2')
 
         route = rt.RouteSegment(
-            length=16, start=0, appendices=[],
+            length=16, start=0, linear='yes', appendices=[],
             main=[rt.WaySegment(
                     length=5, start=0,
                     ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=5, start=0,

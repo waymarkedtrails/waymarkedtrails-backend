@@ -24,7 +24,7 @@ def test_roundabout_middle(grid, rd, l1, l2):
     ])
 
     assert route == rt.RouteSegment(
-        length=16, start=0, appendices=[],
+        length=16, start=0, linear='yes', appendices=[],
         main=[rt.WaySegment(
                 length=5, start=0,
                 ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=5, start=0,
@@ -77,7 +77,7 @@ def test_roundabout_beginning(grid, l2):
     ])
 
     assert route == rt.RouteSegment(
-        length=14, start=0, appendices=[],
+        length=14, start=0, linear='yes', appendices=[],
         main=[rt.SplitSegment(
                 length=9, start=0,
                 first=tuple(g.coord(1)),
@@ -123,7 +123,7 @@ def test_roundabout_end(grid, l1):
     ])
 
     assert route == rt.RouteSegment(
-        length=8, start=0, appendices=[],
+        length=8, start=0, linear='yes', appendices=[],
         main=[rt.WaySegment(
                 length=5, start=0,
                 ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=5, start=0,
@@ -170,7 +170,7 @@ def test_roundabout_with_approaches(grid):
                          for oid, (pts, dir) in enumerate(ways, start=1)])
 
     assert route == rt.RouteSegment(
-        length=8, start=0, appendices=[],
+        length=8, start=0, linear='yes', appendices=[],
         main=[rt.WaySegment(
                 length=1, start=0,
                 ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=1, start=0,
@@ -249,7 +249,7 @@ def test_double_roundabout_attached(grid):
                          for oid, (pts, dir) in enumerate(ways, start=1)])
 
     assert route == rt.RouteSegment(
-        length=6, start=0, appendices=[],
+        length=6, start=0, linear='yes', appendices=[],
         main=[rt.WaySegment(
                 length=1, start=0,
                 ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=1, start=0,
@@ -314,7 +314,7 @@ def test_double_roundabout_with_split_join(grid):
                          for oid, (pts, dir) in enumerate(ways, start=1)])
 
     assert route == rt.RouteSegment(
-        length=6, start=0, appendices=[],
+        length=6, start=0, linear='yes', appendices=[],
         main=[rt.WaySegment(
                 length=1, start=0,
                 ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=1, start=0,

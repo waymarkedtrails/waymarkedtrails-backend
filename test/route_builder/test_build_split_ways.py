@@ -37,7 +37,7 @@ def test_split_single_way(grid, ways):
     route = build_route(members)
 
     assert route == rt.RouteSegment(
-        length=16, start=0, appendices=[],
+        length=16, start=0, appendices=[], linear='yes',
         main=[rt.WaySegment(
                 length=5, start=0,
                 ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=5, start=0,
@@ -96,7 +96,7 @@ def test_split_multi_ways_as_circular(grid, ways):
     route = build_route(members)
 
     assert route == rt.RouteSegment(
-        length=17, start=0, appendices=[],
+        length=17, start=0, appendices=[], linear='yes',
         main=[rt.WaySegment(
                 length=5, start=0,
                 ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=5, start=0,
@@ -160,7 +160,7 @@ def test_split_multi_ways_as_directional(grid, ways):
     route = build_route(members)
 
     assert route == rt.RouteSegment(
-        length=17, start=0, appendices=[],
+        length=17, start=0, appendices=[], linear='yes',
         main=[rt.WaySegment(
                 length=5, start=0,
                 ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=5, start=0,
@@ -225,7 +225,7 @@ def test_split_multi_ways_as_directional_gap_forward(grid, ways):
     route = build_route(members)
 
     assert route == rt.RouteSegment(
-        length=17, start=0, appendices=[],
+        length=17, start=0, appendices=[], linear='yes',
         main=[rt.WaySegment(
                 length=5, start=0,
                 ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=5, start=0,
@@ -294,7 +294,7 @@ def test_split_multi_ways_as_directional_gap_backward(grid, ways):
     route = build_route(members)
 
     assert route == rt.RouteSegment(
-        length=17, start=0, appendices=[],
+        length=17, start=0, appendices=[], linear='yes',
         main=[rt.WaySegment(
                 length=5, start=0,
                 ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=5, start=0,
@@ -364,7 +364,7 @@ def test_split_multi_ways_as_directional_gap_forward_beginning(grid, ways):
     route = build_route(members)
 
     assert route == rt.RouteSegment(
-        length=17, start=0, appendices=[],
+        length=17, start=0, appendices=[], linear='yes',
         main=[rt.WaySegment(
                 length=5, start=0,
                 ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=5, start=0,
@@ -429,7 +429,7 @@ def test_split_multi_ways_as_directional_gap_backward_beginning(grid, ways):
     route = build_route(members)
 
     assert route == rt.RouteSegment(
-        length=17, start=0, appendices=[],
+        length=17, start=0, appendices=[], linear='yes',
         main=[rt.WaySegment(
                 length=5, start=0,
                 ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=5, start=0,
@@ -494,7 +494,7 @@ def test_split_multi_ways_as_directional_gap_forward_end(grid, ways):
     route = build_route(members)
 
     assert route == rt.RouteSegment(
-        length=17, start=0, appendices=[],
+        length=17, start=0, appendices=[], linear='yes',
         main=[rt.WaySegment(
                 length=5, start=0,
                 ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=5, start=0,
@@ -559,7 +559,7 @@ def test_split_multi_ways_as_directional_gap_backward_end(grid, ways):
     route = build_route(members)
 
     assert route == rt.RouteSegment(
-        length=17, start=0, appendices=[],
+        length=17, start=0, appendices=[], linear='yes',
         main=[rt.WaySegment(
                 length=5, start=0,
                 ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=5, start=0,
@@ -624,7 +624,7 @@ def test_split_multi_ways_as_directional_gap_both_beginning(grid, ways):
     route = build_route(members)
 
     assert route == rt.RouteSegment(
-        length=17, start=0, appendices=[],
+        length=17, start=0, appendices=[], linear='no',
         main=[rt.WaySegment(
                 length=5, start=0,
                 ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=5, start=0,
@@ -689,7 +689,7 @@ def test_split_multi_ways_as_directional_gap_both_end(grid, ways):
     route = build_route(members)
 
     assert route == rt.RouteSegment(
-        length=17, start=0, appendices=[],
+        length=17, start=0, appendices=[], linear='no',
         main=[rt.WaySegment(
                 length=5, start=0,
                 ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=5, start=0,
@@ -732,3 +732,63 @@ def test_split_multi_ways_as_directional_gap_both_end(grid, ways):
                 )
               ]
         )
+
+
+@pytest.mark.parametrize('ways', permute_directions(('234', 1),
+                                                    ('654', -1),
+                                                    '49'))
+def test_split_simple_ways_as_directional_gap_both_beginning(grid, ways):
+    g = grid("""\
+               6 5
+           8 1     4  9
+               2 3
+        """)
+
+
+    way_ids = (11, 12, 3)
+    way_lens = (7, 7, 5)
+    members = [rt.BaseWay(1, {}, 5, 0, g.line('81'), '')] + \
+              [rt.BaseWay(way_ids[i], {}, way_lens[i], w[1], g.line(w[0]), '')
+               for i, w in enumerate(ways)]
+
+    route = build_route(members)
+
+    assert route == rt.RouteSegment(
+        length=17, start=0, appendices=[], linear='no',
+        main=[rt.WaySegment(
+                length=5, start=0,
+                ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=5, start=0,
+                                 direction=0, role='', geom=g.line('81'))
+                     ]
+                ),
+              rt.SplitSegment(
+                length=7, start=7,
+                first=tuple(g.coord(2)),
+                last=tuple(g.coord(4)),
+                forward=[rt.WaySegment(
+                            length=7, start=7,
+                            ways=[rt.BaseWay(osm_id=11, tags=TagStore(), length=7, start=7,
+                                             direction=1, role='', geom=g.line('234')
+                                             )
+                                 ]
+                            )
+                        ],
+                backward=[rt.WaySegment(
+                            length=7, start=9,
+                            ways=[rt.BaseWay(osm_id=12, tags=TagStore(), length=7, start=9,
+                                             direction=-1, role='', geom=g.line('654')
+                                             )
+                                 ]
+                            )
+                        ]
+                ),
+              rt.WaySegment(
+                length=5, start=16,
+                ways=[rt.BaseWay(osm_id=3, tags=TagStore(), length=5, start=16,
+                                 direction=0, role='', geom=g.line('49')
+                                 )
+                     ]
+                )
+              ]
+        )
+

@@ -356,6 +356,30 @@ def _make_circular(seg: rt.WaySegment, start_points, end_points) -> rt.SplitSegm
                            first=fwd.first, last=fwd.last)
 
 
+def _split_u_segment_fwd(seg: rt.WaySegment, si: int) -> rt.SplitSegment:
+    if seg.direction > 0:
+        fwd, bwd = seg.split_way(si)
+        bwd.reverse()
+    else:
+        bwd, fwd = seg.split_way(si)
+        fwd.reverse()
+
+    return rt.SplitSegment(length=fwd.length, forward=[fwd], backward=[bwd],
+                           first=fwd.first, last=fwd.last)
+
+
+def _split_u_segment_bwd(seg: rt.WaySegment, si: int) -> rt.SplitSegment:
+    if seg.direction > 0:
+        bwd, fwd = seg.split_way(si)
+        bwd.reverse()
+    else:
+        fwd, bwd = seg.split_way(si)
+        fwd.reverse()
+
+    return rt.SplitSegment(length=fwd.length, forward=[fwd], backward=[bwd],
+                       first=fwd.first, last=fwd.last)
+
+
 def _make_simple_splitway(seg: rt.WaySegment, start_points, end_points) -> rt.SplitSegment | rt.WaySegment:
     """ Convert a one-way non-circular multi-way WaySegment into a split segment by
         cutting at the most conventient place.
@@ -364,63 +388,72 @@ def _make_simple_splitway(seg: rt.WaySegment, start_points, end_points) -> rt.Sp
     if seglen <= 1:
         return seg
 
-    front_connections = int(seg.first in start_points) + int(seg.last in start_points)
-    if front_connections > 0:
-        # Create a U-segment with the open ends towards start
-        for i, way in enumerate(seg.ways):
-            if i == seglen - 1:
-                # linear connection between prev and next
-                return seg
-            if way.last in end_points:
-                si = i + 1
-                break
-        else:
-            # couldn't find the other end. If both ends are connected
-            # just split the way in the middle, otherwise give up.
-            if front_connections > 1:
-                si = int(len(seg.ways)/2)
-            else:
-                return seg
+    # Collect indexes where the segment touches start and end points.
+    front_connections = []
+    back_connections = []
 
-        if seg.direction > 0:
-            fwd, bwd = seg.split_way(si)
-            bwd.reverse()
-        else:
-            bwd, fwd = seg.split_way(si)
-            fwd.reverse()
+    for i, way in enumerate(seg.ways):
+        if way.first in start_points:
+            front_connections.append(i)
+        if way.first in end_points:
+            back_connections.append(i)
+    if seg.ways[-1].last in start_points:
+        front_connections.append(-1)
+    if seg.ways[-1].last in end_points:
+        back_connections.append(-1)
 
-        return rt.SplitSegment(length=fwd.length, forward=[fwd], backward=[bwd],
-                               first=fwd.first, last=fwd.last)
+    if front_connections:
+        if front_connections[0] == 0:
+            if front_connections[-1] == -1 \
+               or (back_connections and back_connections[-1] != -1):
+                # Create a U-segment with the open end towards start
+                if back_connections:
+                    return _split_u_segment_fwd(seg, back_connections[0])
 
-    back_connections = int(seg.last in end_points) + int(seg.first in end_points)
-    if back_connections > 0:
-        for i, way in enumerate(seg.ways):
-            if i == seglen - 1:
-                # linear connection between prev and next
-                return seg
-            if way.last in start_points:
-                si = i + 1
-                break
-        else:
-            # couldn't find the other end. If both ends are connected
-            # just split the way in the middle, otherwise give up.
-            if back_connections > 1:
-                si = int(len(seg.ways)/2)
-            else:
-                return seg
+                return _split_u_segment_fwd(seg, int(len(seg.ways)/2))
 
-        if seg.direction > 0:
-            bwd, fwd = seg.split_way(si)
-            bwd.reverse()
-        else:
-            fwd, bwd = seg.split_way(si)
-            fwd.reverse()
+            # inconclusive, leave unchanged
+            return seg
 
-        return rt.SplitSegment(length=fwd.length, forward=[fwd], backward=[bwd],
-                           first=fwd.first, last=fwd.last)
+        if front_connections[-1] == -1:
+            if back_connections:
+                # Create a U-segment with the open end towards start,
+                # dangling at beginning
+                return _split_u_segment_fwd(seg, back_connections[0])
+
+            # inconclusive
+            return seg
+
+    if back_connections:
+        if back_connections[0] == 0:
+            if back_connections[-1] == -1 \
+               or (front_connections and front_connections[-1] != -1):
+                # Create a U-segment with the open end towards end
+                if front_connections:
+                    return _split_u_segment_bwd(seg, front_connections[0])
+
+                return _split_u_segment_bwd(seg, int(len(seg.ways)/2))
+
+            # inconclusive
+            return seg
+
+        if back_connections[-1] == -1:
+            if front_connections:
+                # Create a U-segment with open end towards end, dangling at end
+                return _split_u_segment_bwd(seg, front_connections[0])
+
+            # inconclusive
+            return seg
+
+        # We have a back_connection but no matching fronts, dangle both at beginning
+        return _split_u_segment_fwd(seg, back_connections[0])
+
+    if front_connections:
+        return _split_u_segment_bwd(seg, front_connections[0])
 
     # inconclusive, leave unchanged
     return seg
+
 
 def _make_oneways_directional(segments: rt.BaseSegmentView, start_points, end_points,
                               out_segments: list[rt.AnySegment]):
