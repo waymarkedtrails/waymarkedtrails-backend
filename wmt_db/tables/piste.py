@@ -20,6 +20,8 @@ from osgende.common.tags import TagStore
 from osgende.lines import PlainWayTable
 
 from ..common.data_transforms import make_geometry
+from ..geometry.route_builder import build_route
+from ..geometry.member_loader import get_relation_objects
 
 def _add_piste_columns(table, name):
     table.append_column(sa.Column('name', sa.String))
@@ -67,6 +69,7 @@ class PisteRoutes(ThreadableDBObject, TableSource):
                                       primary_key=True, autoincrement=False))
         table.append_column(sa.Column('top', sa.Boolean))
         _add_piste_columns(table, config.table_name)
+        table.append_column(sa.Column('route', sa.String))
         table.append_column(sa.Column('geom', Geometry('GEOMETRY', srid=ways.srid)))
         table.append_column(sa.Column('render_geom', Geometry('GEOMETRY', srid=ways.srid)))
 
@@ -199,8 +202,13 @@ class PisteRoutes(ThreadableDBObject, TableSource):
         if geom is None:
             return None
 
+        route_members = get_relation_objects(conn, obj.members, self.ways, self.data)
+        assert len(route_members) > 0
+        route = build_route(route_members)
+
         outtags['geom'] = geom
         outtags['render_geom'] = render_geom
+        outtags['route'] = route.to_json()
         outtags['symbol'] = write_symbol(self.shield_fab, tags,
                                          outtags['difficulty'],
                                          self.config.symbol_datadir)
