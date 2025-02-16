@@ -24,10 +24,11 @@ from ..common.data_transforms import make_geometry
 def _add_piste_columns(table, name):
     table.append_column(sa.Column('name', sa.String))
     table.append_column(sa.Column('ref', sa.String))
-    table.append_column(sa.Column('intnames', JSONB))
     table.append_column(sa.Column('symbol', sa.String))
     table.append_column(sa.Column('difficulty', sa.SmallInteger))
     table.append_column(sa.Column('piste', sa.SmallInteger))
+    table.append_column(sa.Column('intnames', JSONB))
+    table.append_column(sa.Column('tags', JSONB))
     table.append_column(sa.Index(f'idx_{name}_iname', sa.text('upper(name)')))
 
 def write_symbol(factory, tags, difficulty, datadir):
@@ -49,7 +50,8 @@ def basic_tag_transform(tags: TagStore, config):
         name=tags.firstof('piste:name', 'name'),
         ref=tags.firstof('piste:ref', 'ref'),
         difficulty=difficulty,
-        piste=config.piste_type.get(tags.get('piste:type'), 0)
+        piste=config.piste_type.get(tags.get('piste:type'), 0),
+        tags=tags
     )
 
 
