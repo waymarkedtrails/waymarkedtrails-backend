@@ -70,6 +70,7 @@ class PisteRoutes(ThreadableDBObject, TableSource):
         table.append_column(sa.Column('top', sa.Boolean))
         _add_piste_columns(table, config.table_name)
         table.append_column(sa.Column('route', sa.String))
+        table.append_column(sa.Column('linear', sa.String))
         table.append_column(sa.Column('geom', Geometry('GEOMETRY', srid=ways.srid)))
         table.append_column(sa.Column('render_geom', Geometry('GEOMETRY', srid=ways.srid)))
 
@@ -209,6 +210,7 @@ class PisteRoutes(ThreadableDBObject, TableSource):
         outtags['geom'] = geom
         outtags['render_geom'] = render_geom
         outtags['route'] = route.to_json()
+        outtags['linear'] = route.get_linear_state()
         outtags['symbol'] = write_symbol(self.shield_fab, tags,
                                          outtags['difficulty'],
                                          self.config.symbol_datadir)
