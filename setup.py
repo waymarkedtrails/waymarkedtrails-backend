@@ -21,7 +21,8 @@ setup(name='waymarkedtrails-backend',
                 'wmt_db.common',
                 'wmt_db.styles',
                 'wmt_db.tables',
-                'wmt_db.maptype'
+                'wmt_db.maptype',
+                'wmt_db.geometry'
                ],
       package_data = {'wmt_db' : ['data/mapnik/**', 'data/shields/**',
                                   'data/map-styles/**', 'data/map-styles/inc/**',
