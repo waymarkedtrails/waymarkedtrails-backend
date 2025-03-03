@@ -382,10 +382,10 @@ def _split_u_segment_bwd(seg: rt.WaySegment, si: int) -> rt.SplitSegment:
 
 def _make_simple_splitway(seg: rt.WaySegment, start_points, end_points) -> rt.SplitSegment | rt.WaySegment:
     """ Convert a one-way non-circular multi-way WaySegment into a split segment by
-        cutting at the most conventient place.
+        cutting at the most convenient place.
     """
     seglen = len(seg.ways)
-    if seglen <= 1:
+    if seglen <= 1 or any(p in end_points for p in start_points):
         return seg
 
     # Collect indexes where the segment touches start and end points.

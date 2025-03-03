@@ -792,3 +792,42 @@ def test_split_simple_ways_as_directional_gap_both_beginning(grid, ways):
               ]
         )
 
+def test_v_shape_with_dangling_oneway(grid):
+    g = grid("""\
+
+       1  2
+            5 6 7
+       3  4
+       """)
+
+    members = [rt.BaseWay(1, {}, 3, 0, g.line('125'), ''),
+               rt.BaseWay(2, {}, 2, 1, g.line('56'), ''),
+               rt.BaseWay(12, {}, 2, 1, g.line('67'), ''),
+               rt.BaseWay(3, {}, 3, 0, g.line('543'), '')]
+
+    route = build_route(members)
+
+    assert route == rt.RouteSegment(
+        length=10, start=0, appendices=[], linear='no',
+        main=[rt.WaySegment(
+                length=3, start=0,
+                ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=3, start=0,
+                                 direction=0, role='', geom=g.line('125'))
+                     ]
+                ),
+              rt.WaySegment(
+                length=4, start=3,
+                ways=[rt.BaseWay(osm_id=2, tags=TagStore(), length=2, start=3,
+                                 direction=1, role='', geom=g.line('56')),
+                      rt.BaseWay(osm_id=12, tags=TagStore(), length=2, start=5,
+                                 direction=1, role='', geom=g.line('67'))
+                     ]
+                ),
+              rt.WaySegment(
+                length=3, start=11,
+                ways=[rt.BaseWay(osm_id=3, tags=TagStore(), length=3, start=11,
+                                 direction=0, role='', geom=g.line('543'))
+                     ]
+                )]
+                )
+
