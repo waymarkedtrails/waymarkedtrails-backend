@@ -831,3 +831,37 @@ def test_v_shape_with_dangling_oneway(grid):
                 )]
                 )
 
+def test_oneway_reversed_between_twoways(grid):
+    g = grid(" 1 2 3 4 5 6 7 8")
+
+    members = [rt.BaseWay(1, {}, 2, 0, g.line('123'), ''),
+               rt.BaseWay(8, {}, 1, -1, g.line('54'), ''),
+               rt.BaseWay(9, {}, 1, -1, g.line('43'), ''),
+               rt.BaseWay(2, {}, 2, 0, g.line('567'), '')]
+
+    route = build_route(members)
+
+    assert route == rt.RouteSegment(
+        length=6, start=0, appendices=[], linear='sorted',
+        main=[rt.WaySegment(
+                length=2, start=0,
+                ways=[rt.BaseWay(osm_id=1, tags=TagStore(), length=2, start=0,
+                                 direction=0, role='', geom=g.line('123'))
+                     ]
+                ),
+              rt.WaySegment(
+                length=2, start=2,
+                ways=[rt.BaseWay(osm_id=9, tags=TagStore(), length=1, start=2,
+                                 direction=1, role='', geom=g.line('34')),
+                      rt.BaseWay(osm_id=8, tags=TagStore(), length=1, start=3,
+                                 direction=1, role='', geom=g.line('45'))
+                     ]
+                ),
+              rt.WaySegment(
+                length=2, start=4,
+                ways=[rt.BaseWay(osm_id=2, tags=TagStore(), length=2, start=4,
+                                 direction=0, role='', geom=g.line('567'))
+                     ]
+                )]
+                )
+

@@ -416,7 +416,7 @@ def _make_simple_splitway(seg: rt.WaySegment, start_points, end_points) -> rt.Sp
             return seg
 
         if front_connections[-1] == -1:
-            if back_connections:
+            if back_connections and back_connections[0] > 0:
                 # Create a U-segment with the open end towards start,
                 # dangling at beginning
                 return _split_u_segment_fwd(seg, back_connections[0])
