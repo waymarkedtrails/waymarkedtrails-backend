@@ -33,6 +33,7 @@ ROUTES.symbols = (filters.tags_all('.color_box',
                                    {'operator' : 'cz:KČT',}),
                   '.swiss_mobile',
                   '.jel_symbol',
+                  '.wiki_symbol',
                   '.ref_color_symbol',
                   '.ref_symbol',
                   '.color_box')
