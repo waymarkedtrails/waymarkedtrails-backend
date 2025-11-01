@@ -14,49 +14,48 @@ from osgende.osmdata import OsmSourceTables
 from wmt_db.tables.updates import UpdatedGeometriesTable
 from wmt_db.tables.styles import StyleTable
 
+
+class StyleTestConfig:
+    table_name = 'test'
+
+    def add_columns(self, table):
+        table.append_column(sa.Column('names', ARRAY(sa.String)))
+
+    def new_collector(self):
+        return list()
+
+    def add_to_collector(self, seginfo, route):
+        seginfo.append(route.name)
+
+    def to_columns(self, seginfo):
+        seginfo.sort()
+        return dict(names=seginfo)
+
+
 @pytest.fixture
-def route_table(mapdb):
-    table = mapdb.add_table('routes',
+def base_tables(mapdb, segment_table):
+    route_table = mapdb.add_table('routes',
                 TableSource(sa.Table('routes', mapdb.metadata,
                                      sa.Column('id', sa.BigInteger),
                                      sa.Column('name', sa.Text)),
                             change_table='route_changeset'))
+    rels = mapdb.add_table('src_rels',
+               OsmSourceTables.create_relation_table(mapdb.metadata))
+    hier = mapdb.add_table('hierarchy',
+               RelationHierarchy(mapdb.metadata, 'hierarchy', rels, track_changes=True))
+    uptable = mapdb.add_table('updates',
+                  UpdatedGeometriesTable(mapdb.metadata, 'updates'))
 
-    return table
+    mapdb.add_table('test',
+                    StyleTable(mapdb.metadata, route_table, segment_table,
+                               hier, StyleTestConfig(), uptable))
+    mapdb.create()
 
 
-class TestStyleTable:
-
-    class Config:
-        table_name = 'test'
-
-        def add_columns(self, table):
-            table.append_column(sa.Column('names', ARRAY(sa.String)))
-
-        def new_collector(self):
-            return list()
-
-        def add_to_collector(self, seginfo, route):
-            seginfo.append(route.name)
-
-        def to_columns(self, seginfo):
-            seginfo.sort()
-            return dict(names=seginfo)
+class TestStyleTableCreate:
 
     @pytest.fixture(autouse=True)
-    def init_tables(self, mapdb, route_table, segment_table):
-        rels = mapdb.add_table('src_rels',
-                   OsmSourceTables.create_relation_table(mapdb.metadata))
-        hier = mapdb.add_table('hierarchy',
-                   RelationHierarchy(mapdb.metadata, 'hierarchy', rels))
-        uptable = mapdb.add_table('updates',
-                      UpdatedGeometriesTable(mapdb.metadata, 'updates'))
-
-        mapdb.add_table('test',
-                        StyleTable(mapdb.metadata, route_table, segment_table,
-                                   hier, self.Config(), uptable))
-        mapdb.create()
-
+    def init_tables(self, mapdb, base_tables):
         mapdb.insert_into('routes')\
             .line(1, name='A')\
             .line(2, name='B')\
@@ -85,30 +84,6 @@ class TestStyleTable:
              dict(id=25, names=['A', 'B', 'C'])
             ])
 
-    def test_updates(self, mapdb):
-        mapdb.insert_into('ways')\
-            .line(12, rels=[1, 2, 3], geom='SRID=4326;LINESTRING(0 0, 0.1 0.1)')\
-            .line(20, rels=[3], geom='SRID=4326;LINESTRING(0 0, 0.1 0.1)')
-
-        mapdb.construct()
-
-        mapdb.table_equals('test',
-            [dict(id=12, names=['A', 'B', 'C']),
-             dict(id=20, names=['C'])
-            ])
-
-        mapdb.modify('ways')\
-            .delete(12)\
-            .add(13, rels=[1], geom='SRID=4326;LINESTRING(0 0, 0.1 0.1)')
-
-        mapdb.modify('routes').modify(3, name='X')
-
-        mapdb.update()
-
-        mapdb.table_equals('test',
-            [dict(id=13, names=['A']),
-             dict(id=20, names=['X'])])
-
     def test_hierarchy(self, mapdb):
         mapdb.insert_into('src_rels')\
             .line(1, tags={}, members=[dict(id=2, role='', type='R')])
@@ -124,6 +99,84 @@ class TestStyleTable:
              dict(id=11, names=['A', 'B'])
             ])
 
+
+class TestStyleTableUpdate:
+
+    @pytest.fixture(autouse=True)
+    def init_tables(self, mapdb, base_tables):
+        mapdb.insert_into('routes')\
+            .line(1, name='A')\
+            .line(2, name='B')\
+            .line(3, name='C')
+
+        mapdb.insert_into('ways')\
+            .line(12, rels=[1, 2, 3], geom='SRID=4326;LINESTRING(0 0, 0.1 0.1)')\
+            .line(20, rels=[3], geom='SRID=4326;LINESTRING(0 0, 0.1 0.1)')
+
+        mapdb.construct()
+
+    def test_add_way(self, mapdb):
+        mapdb.modify('ways')\
+            .add(13, rels=[1], geom='SRID=4326;LINESTRING(0 0, 0.1 0.1)')
+
+        mapdb.update()
+
+        mapdb.table_equals('test',
+            [dict(id=12, names=['A', 'B', 'C']),
+             dict(id=20, names=['C']),
+             dict(id=13, names=['A'])
+            ])
+
+    def test_delete_way(self, mapdb):
+        mapdb.modify('ways')\
+            .delete(12)
+
+        mapdb.update()
+
+        mapdb.table_equals('test',
+            [dict(id=20, names=['C'])
+            ])
+
+    def test_modify_relation_members(self, mapdb):
+        mapdb.modify('ways')\
+            .add(12, rels=[1, 2], geom='SRID=4326;LINESTRING(0 0, 0.1 0.1)')
+
+        mapdb.update()
+
+        mapdb.table_equals('test',
+            [dict(id=12, names=['A', 'B']),
+             dict(id=20, names=['C'])
+            ])
+
+    def test_change_relation_name(self, mapdb):
+        mapdb.modify('routes').modify(3, name='X')
+
+        mapdb.update()
+
+        mapdb.table_equals('test',
+            [dict(id=12, names=['A', 'B', 'X']),
+             dict(id=20, names=['X'])])
+
+
+class TestStyleTableHierarchyUpdates:
+
+    @pytest.fixture(autouse=True)
+    def init_tables(self, mapdb, base_tables):
+        mapdb.insert_into('routes')\
+            .line(1, name='A')\
+            .line(2, name='B')\
+            .line(3, name='C')
+
+        mapdb.insert_into('src_rels')\
+            .line(1, tags={}, members=[dict(id=2, role='', type='R')])
+
+        mapdb.insert_into('ways')\
+            .line(10, rels=[2], geom='SRID=4326;LINESTRING(0 0, 0.1 0.1)')\
+            .line(11, rels=[3], geom='SRID=4326;LINESTRING(0 0, 0.1 0.1)')
+
+        mapdb.construct()
+
+    def test_hierarchy(self, mapdb):
         mapdb.modify('src_rels')\
             .delete(1)\
             .add(2, tags={}, members=[dict(id=1, role='', type='R')])
@@ -137,4 +190,35 @@ class TestStyleTable:
         mapdb.table_equals('test',
             [dict(id=10, names=['A', 'B']),
              dict(id=11, names=['B'])
+            ])
+
+    def test_add_super_relation(self, mapdb):
+        mapdb.table_equals('test',
+            [dict(id=10, names=['A', 'B']),
+             dict(id=11, names=['C'])
+            ])
+
+        mapdb.modify('routes').add(4, name='X')
+
+        mapdb.modify('src_rels')\
+            .add(4, tags={}, members=[dict(id=2, role='', type='R')])
+
+        mapdb.update()
+
+        mapdb.table_equals('test',
+            [dict(id=10, names=['A', 'B', 'X']),
+             dict(id=11, names=['C'])
+            ])
+
+    def test_delete_super_relation(self, mapdb):
+        mapdb.modify('routes').delete(1)
+
+        mapdb.modify('src_rels')\
+            .delete(1)
+
+        mapdb.update()
+
+        mapdb.table_equals('test',
+            [dict(id=10, names=['B']),
+             dict(id=11, names=['C'])
             ])

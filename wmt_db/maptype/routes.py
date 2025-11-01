@@ -119,7 +119,8 @@ def setup_tables(db, route_class=Routes):
 
     # hierarchy table for super relations
     rtree = db.add_table('hierarchy',
-                         RelationHierarchy(db.metadata, tabname.hierarchy, rfilt))
+                         RelationHierarchy(db.metadata, tabname.hierarchy, rfilt,
+                                           track_changes=True))
 
     # routes table: information about each route
     routes = db.add_table('routes',

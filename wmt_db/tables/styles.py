@@ -30,6 +30,9 @@ class StyleTable(ThreadableDBObject, TableSource):
         self.rels = routes
         self.ways = segments
         self.rtree = hierarchy
+        if self.rtree.change is None:
+            raise RuntimeError("Hierarchy table is missing changes.")
+
         # table that holds geometry updates
         self.uptable = uptable
 
@@ -106,9 +109,17 @@ class StyleTable(ThreadableDBObject, TableSource):
 
     def synchronize_rels(self, engine):
         # select ways with changed rels joined with data with geom not null
+        hd = self.rtree.change
+
+        relset = sa.union(
+            self.rels.select_add_modify(),
+            sa.select(hd.c.child)
+              .where(hd.c.parent == sa.func.any(sa.select(self.rels.change.c.id).scalar_subquery()))
+        )
+
         sql = self._synchronise_sql([c for c in self.c
                                      if c.name not in ('id', 'geom')])\
-                .where(self.ways.c.rels.op('&& ARRAY')(self.rels.select_add_modify().scalar_subquery()))\
+                .where(self.ways.c.rels.op('&& ARRAY')(relset.scalar_subquery()))\
                 .where(self.ways.c.id == self.c.id)\
                 .where(self.c.geom is not None)
 
