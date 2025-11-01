@@ -29,6 +29,8 @@ ROUTES.network_map = {
         }
 ROUTES.symbols = (filters.tags_all('.color_box',
                                    {'operator' : 'Norwich City Council',}),
+                  filters.tags_all('.osmc_symbol',
+                                   {'operator' : 'cz:KČT',}),
                   '.swiss_mobile',
                   '.jel_symbol',
                   '.ref_color_symbol',
